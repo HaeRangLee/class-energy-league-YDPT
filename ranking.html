@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>랭킹</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* Forest background with a soft green overlay for readability */
+            background: linear-gradient(rgba(232, 245, 233, 0.5), rgba(232, 245, 233, 0.5)), url('https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1974&q=80') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px 0;
+        }
+        .ranking-board {
+            background-color: #fafdfa; /* Off-white with a hint of green */
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(46, 81, 46, 0.1); /* Greenish shadow */
+            width: 90%;
+            max-width: 400px;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #1b5e20; /* Dark forest green */
+            margin-bottom: 25px;
+            font-weight: 700;
+            font-size: 1.8em;
+        }
+        ol {
+            list-style-type: none;
+            padding: 0;
+            counter-reset: ranking-counter;
+        }
+        li {
+            background-color: #fff;
+            margin-bottom: 12px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            border: 1px solid #dceddc; /* Light green border */
+            counter-increment: ranking-counter;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            position: relative; /* For crown positioning */
+        }
+        li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 81, 46, 0.12); /* Greenish hover shadow */
+        }
+        li::before {
+            content: counter(ranking-counter);
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #558b2f; /* Earthy green for numbers */
+            margin-right: 15px;
+            min-width: 24px;
+            text-align: center;
+        }
+        .name-rank-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .name {
+            font-weight: 600;
+            color: #444;
+        }
+        .rank-name {
+            font-size: 0.85em;
+            color: #6a8a6b; /* Muted, earthy green */
+            margin-top: 2px;
+        }
+        .score {
+            color: #4CAF50; /* Vibrant green for score */
+            font-weight: 600;
+            margin-left: auto;
+            padding-left: 10px;
+        }
+        .team-link {
+            margin-left: 10px;
+            color: #b0b0b0;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: bold;
+            transition: color 0.2s ease;
+        }
+        .team-link:hover {
+            color: #388E3C; /* A nice green from our palette */
+        }
+        /* Top 3 styling with Nature Icons */
+        li:nth-child(1) {
+            background-color: #F1F8E9;
+            border-color: #7CB342; /* 1st: Vibrant Lime Green */
+            border-width: 2px;
+            animation: highlight-glow 2.5s infinite ease-in-out;
+            overflow: visible; /* Ensure crown is not clipped */
+            /* Make 1st place item taller */
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        li:nth-child(1)::before { content: '🌳'; font-size: 1.5em; margin-right: 10px; }
+        /* Crown for the 1st place */
+        li:nth-child(1)::after {
+            content: '👑';
+            font-size: 1.6em;
+            position: absolute;
+            top: 2px;
+            left: 50px;
+            transform: rotate(-15deg);
+        }
+        li:nth-child(2) { background-color: #E8F5E9; border-color: #4CAF50; } /* 2nd: Classic Leaf Green */
+        li:nth-child(2)::before { content: '🌲'; font-size: 1.5em; margin-right: 10px; }
+        li:nth-child(3) { background-color: #EFEBE9; border-color: #A1887F; } /* 3rd: Richer Wood Brown */
+        li:nth-child(3)::before { content: '🪵'; font-size: 1.5em; margin-right: 10px; }
+        /* Lower rank icons */
+        li:nth-child(4)::before { content: '🌱'; font-size: 1.3em; margin-right: 12px; }
+        li:nth-child(5)::before { content: '🪴'; font-size: 1.3em; margin-right: 12px; }
+
+        @keyframes highlight-glow {
+            0% {
+                box-shadow: 0 2px 8px rgba(124, 179, 66, 0.2);
+            }
+            50% {
+                box-shadow: 0 4px 16px rgba(124, 179, 66, 0.4);
+            }
+            100% {
+                box-shadow: 0 2px 8px rgba(124, 179, 66, 0.2);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ranking-board">
+        <h1>주간 랭킹</h1>
+        <ol>
+            <li>
+                <div class="name-rank-wrapper">
+                    <span class="name">라이언o</span>
+                    <span class="rank-name">세계수</span>
+                </div>
+                <span class="score">1500점</span>
+                <a href="#" class="team-link" title="팀 정보 보기">›</a>
+            </li>
+            <li>
+                <div class="name-rank-wrapper">
+                    <span class="name">어피치</span>
+                    <span class="rank-name">나무</span>
+                </div>
+                <span class="score">1450점</span>
+                <a href="#" class="team-link" title="팀 정보 보기">›</a>
+            </li>
+            <li>
+                <div class="name-rank-wrapper">
+                    <span class="name">무지</span>
+                    <span class="rank-name">마른 나무</span>
+                </div>
+                <span class="score">1300점</span>
+                <a href="#" class="team-link" title="팀 정보 보기">›</a>
+            </li>
+            <li>
+                <div class="name-rank-wrapper">
+                    <span class="name">프로도</span>
+                    <span class="rank-name">새싹</span>
+                </div>
+                <span class="score">1100점</span>
+                <a href="#" class="team-link" title="팀 정보 보기">›</a>
+            </li>
+            <li>
+                <div class="name-rank-wrapper">
+                    <span class="name">네오</span>
+                    <span class="rank-name">묘종</span>
+                </div>
+                <span class="score">980점</span>
+                <a href="#" class="team-link" title="팀 정보 보기">›</a>
+            </li>
+        </ol>
+    </div>
+
+</body>
+</html>
