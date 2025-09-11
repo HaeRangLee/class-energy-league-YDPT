@@ -1,0 +1,6 @@
+{
+  "CLASS_ID": "1-1",
+  "KEY_PATH": "serviceAccountKey.json",
+  "NORMAL_INTERVAL_SECONDS": 300,
+  "RETRY_INTERVAL_SECONDS": 60
+}
