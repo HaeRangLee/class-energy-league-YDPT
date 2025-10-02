@@ -1,0 +1,542 @@
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반 정보 - ydp</title>
+    <style>
+        :root {
+            --board-bg: #fafdfa;
+            --shadow-color: rgba(46, 81, 46, 0.1);
+            --title-color: #1b5e20;
+            --border-color: #dceddc;
+            --name-color: #444;
+            --text-color: #555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #E8F5E9;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            position: relative; /* For pseudo-element overlay */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        /* 이미지 위에 반투명 오버레이를 추가하여 가독성 확보 */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: var(--overlay-color, rgba(232, 245, 233, 0.6)); /* JS에서 제어할 색상 변수 */
+            z-index: -1; /* 콘텐츠 뒤로 보내기 */
+        }
+
+        .site-header {
+            width: 100%;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 0;
+            font-size: 1.5em;
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .site-header::before,
+        .site-header::after {
+            content: '🌿';
+            font-size: 0.7em;
+            margin: 0 15px;
+            opacity: 0.9;
+        }
+
+        .info-card {
+            margin-top: 40px;
+            background-color: var(--board-bg);
+            border-radius: 20px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+            width: 90%;
+            max-width: 900px; /* 2단 레이아웃을 위해 너비 확장 */
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .team-name {
+            text-align: center;
+            color: var(--title-color);
+            margin-bottom: 30px;
+            font-weight: 700;
+            font-size: 2em;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: var(--name-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+
+        .info-section p, .info-section li {
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .back-link {
+            display: inline-block;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+        .back-link:hover {
+            opacity: 0.9;
+        }
+
+        .current-team-indicator {
+            position: fixed; /* 스크롤해도 화면 상단에 고정 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            letter-spacing: 1px;
+        }
+
+        .chart-container { max-height: 280px; margin-top: 15px; }
+
+        /* 2단 레이아웃을 위한 스타일 */
+        .info-content-wrapper {
+            display: flex;
+            gap: 30px; /* 열 사이의 간격 */
+        }
+
+        .info-column, .chart-column {
+            flex: 1; /* 각 열이 동일한 너비를 가지도록 설정 */
+            min-width: 0; /* flex 아이템의 크기가 줄어들 수 있도록 설정 */
+        }
+
+        /* 화면이 좁아지면 1단으로 변경 (반응형) */
+        @media (max-width: 768px) {
+            .info-content-wrapper {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .info-card {
+                padding: 20px;
+            }
+            .team-name { font-size: 1.8em; }
+            .chart-container { max-height: 250px; }
+        }
+
+        /* 현재 랭킹 표시 스타일 */
+        .rank-display-section {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #f8fbf8;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .current-rank-display {
+            font-size: 5em;
+            font-weight: 800;
+            line-height: 1;
+            /* 텍스트에 그라데이션 적용 */
+            background-image: linear-gradient(45deg, var(--rank-gradient-start, #388E3C), var(--rank-gradient-end, #81C784));
+            -webkit-background-clip: text; /* Safari/Chrome */
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* 랭킹 차이 상세 스타일 */
+        .rank-diff-details {
+            margin-top: 15px;
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-color);
+        }
+        .rank-diff-details p {
+            margin: 4px 0;
+        }
+        .rank-diff-details .diff-up { /* 상위 등급과의 차이 */
+            color: #c62828; /* Red */
+        }
+        .rank-diff-details .diff-down { /* 하위 등급과의 차이 */
+            color: #2e7d32; /* Green */
+        }
+        .rank-diff-details strong {
+            font-weight: 700;
+        }
+
+        /* 학급 구성원 명단 스타일 */
+        #member-list {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 10px;
+        }
+        #member-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .role-badge {
+            font-size: 0.8em;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            color: white;
+        }
+        .leader { background-color: #FFB300; } /* Amber */
+        .co-leader { background-color: #78909C; } /* Blue Grey */
+
+        /* 일반 학생 그리드 스타일 */
+        .member-grid {
+            display: grid;
+            /* 화면 너비에 따라 자동으로 열 개수 조절 */
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px 12px; /* 세로, 가로 간격 */
+            margin-top: 15px;
+        }
+        .member-grid span {
+            font-size: 0.9em;
+            color: var(--text-color);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header" style="margin-top: 42px;">ydp</header>
+
+    <div class="current-team-indicator"></div>
+
+    <div class="info-card">
+        <h1 class="team-name">🌳 1반 정보 🌳</h1>
+
+        <div class="info-content-wrapper">
+            <div class="info-column">
+                <div class="info-section">
+                    <h3>학급 구성원</h3>
+                    <ul id="member-list"></ul> <!-- 담임/반장용 -->
+                    <div id="member-grid" class="member-grid"></div> <!-- 일반 학생용 -->
+                </div>
+                <div class="info-section rank-display-section">
+                    <h3>현재 랭킹</h3>
+                    <div class="current-rank-display" id="current-rank-display">?위</div>
+                    <div class="rank-diff-details" id="rank-diff-details"></div>
+                </div>
+            </div>
+            <div class="chart-column">
+                <div class="info-section">
+                    <h3>주간 절약량 (kWh)</h3>
+                    <div class="chart-container"><canvas id="bar-chart"></canvas></div>
+                </div>
+                <div class="info-section">
+                    <h3>전력 사용 비중</h3>
+                    <div class="chart-container"><canvas id="pie-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+        <a href="j.html" class="back-link">랭킹으로 돌아가기</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 각 반의 정보를 담고 있는 데이터 객체
+        const classData = {
+            '1반': {
+                name: '1반',
+                icon: '🌳',
+                description: "저희 1반은 에너지 절약을 선도하는 최고의 팀입니다. '세계수' 등급을 목표로 모두가 함께 노력하고 있습니다.",
+                activity: "지난 주, 교내 '소등 캠페인'을 주도하여 전력 사용량을 15% 절감하는 성과를 거두었습니다.",
+                chartData: {
+                    weeklySavings: [12, 19, 15, 22, 18], // 월, 화, 수, 목, 금
+                    usageBreakdown: [50, 30, 20] // 냉난방, 조명, 기타
+                },
+                members: {
+                    leader: '김에너',
+                    coLeader: '박절약',
+                    list: [
+                        '최그린', '이환경', '정지구', '오태양', '한나무', '윤자연',
+                        '송햇살', '허바람', '문재생', '신기후', '강물', '조풀잎',
+                        '유성실', '황노력', '장가능', '백희망', '임새싹', '서열정',
+                        '나미래', '도전기', '표실천', '기성실', '권씨앗', '양잠재',
+                        '마도약', '편성공', '방열매', '위성장'
+                    ]
+                }
+            },
+            '2반': {
+                name: '2반',
+                icon: '🌲',
+                description: "2반은 꾸준함으로 승부합니다. 매일 점심시간 소등을 실천하며 에너지를 아끼고 있습니다.",
+                activity: "분리수거 캠페인에서 우수반으로 선정되었습니다.",
+                chartData: {
+                    weeklySavings: [11, 15, 13, 16, 14],
+                    usageBreakdown: [55, 25, 20]
+                },
+                members: {
+                    leader: '강나무',
+                    coLeader: '윤산소',
+                    list: [
+                        '송햇살', '허바람', '문자연', '신재생', '김에너', '박절약',
+                        '최그린', '이환경', '정지구', '오태양', '한숲', '조산들',
+                        '유성실', '황노력', '장가능', '백희망', '임새싹', '서열정',
+                        '나미래', '도전기', '표실천', '기성실', '권씨앗', '양잠재',
+                        '마도약', '편성공', '방열매', '위성장'
+                    ]
+                }
+            },
+            '3반': {
+                name: '3반',
+                icon: '🪴',
+                description: "이제 막 시작하는 3반입니다. 작은 묘종이 큰 나무가 되듯, 저희의 노력도 큰 결실을 맺을 것입니다.",
+                activity: "팀원들과 함께 에너지 절약 포스터를 제작하여 복도에 게시했습니다.",
+                chartData: {
+                    weeklySavings: [8, 9, 11, 10, 13],
+                    usageBreakdown: [60, 20, 20]
+                },
+                members: {
+                    leader: '백새싹',
+                    coLeader: '임화분',
+                    list: [
+                        '조희망', '유성장', '황노력', '장가능', '김에너', '박절약',
+                        '최그린', '이환경', '정지구', '오태양', '한나무', '윤자연',
+                        '송햇살', '허바람', '문재생', '신기후', '강물', '조풀잎',
+                        '나미래', '도전기', '표실천', '기성실', '권씨앗', '양잠재',
+                        '마도약', '편성공', '방열매', '위성장'
+                    ]
+                }
+            },
+            '4반': {
+                name: '4반',
+                icon: '🌱',
+                description: "새싹처럼 파릇파릇한 4반입니다. 에너지 절약의 중요성을 배우며 함께 성장하고 있습니다.",
+                activity: "'전기 절약 5계명'을 만들어 학급 규칙으로 정했습니다.",
+                chartData: {
+                    weeklySavings: [7, 10, 8, 9, 11],
+                    usageBreakdown: [45, 35, 20]
+                },
+                members: {
+                    leader: '홍새잎',
+                    coLeader: '노푸른',
+                    list: [
+                        '기성실', '표실천', '도전기', '나절전', '김에너', '박절약',
+                        '최그린', '이환경', '정지구', '오태양', '한나무', '윤자연',
+                        '송햇살', '허바람', '문재생', '신기후', '강물', '조풀잎',
+                        '유성실', '황노력', '장가능', '백희망', '임새싹', '서열정',
+                        '마도약', '편성공', '방열매', '위성장'
+                    ]
+                }
+            },
+            '5반': {
+                name: '5반',
+                icon: '🌰',
+                description: "5반은 작은 씨앗에서 큰 가능성을 봅니다. 잠재력을 터뜨려 상위권으로 도약할 준비를 하고 있습니다.",
+                activity: "교실 내 사용하지 않는 콘센트 뽑기 운동을 시작했습니다.",
+                chartData: {
+                    weeklySavings: [5, 6, 7, 5, 8],
+                    usageBreakdown: [50, 30, 20]
+                },
+                members: {
+                    leader: '권씨앗',
+                    coLeader: '양잠재',
+                    list: [
+                        '마도약', '편열정', '방미래', '위성공', '김에너', '박절약',
+                        '최그린', '이환경', '정지구', '오태양', '한나무', '윤자연',
+                        '송햇살', '허바람', '문재생', '신기후', '강물', '조풀잎',
+                        '유성실', '황노력', '장가능', '백희망', '임새싹', '서열정',
+                        '나미래', '도전기', '표실천', '기성실'
+                    ]
+                }
+            },
+            '6반': {
+                name: '6반',
+                icon: '🍂',
+                description: "비옥한 흙과 같은 6반입니다. 모든 성장의 기반이 되는 기본부터 차근차근 다져나가고 있습니다.",
+                activity: "에너지 절약 관련 다큐멘터리를 함께 시청하고 토론 시간을 가졌습니다.",
+                chartData: {
+                    weeklySavings: [4, 5, 4, 6, 5],
+                    usageBreakdown: [65, 25, 10]
+                },
+                members: {
+                    leader: '전토양',
+                    coLeader: '지기반',
+                    list: [
+                        '설기초', '공다짐', '심뿌리', '차근차', '김에너', '박절약',
+                        '최그린', '이환경', '정지구', '오태양', '한나무', '윤자연',
+                        '송햇살', '허바람', '문재생', '신기후', '강물', '조풀잎',
+                        '유성실', '황노력', '장가능', '백희망', '임새싹', '서열정',
+                        '나미래', '도전기', '표실천', '기성실'
+                    ]
+                }
+            }
+        };
+
+        // 페이지가 로드될 때 실행
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const classId = urlParams.get('class'); // URL에서 'class' 파라미터 값을 가져옴 (예: '1반')
+            const rank = parseInt(urlParams.get('rank'), 10); // URL에서 'rank' 파라미터 값을 숫자로 가져옴
+            const score = parseInt(urlParams.get('score'), 10);
+            const prevScore = parseInt(urlParams.get('prevScore'), 10);
+            const nextScore = parseInt(urlParams.get('nextScore'), 10);
+            const classInfo = classData[classId]; // 데이터 객체에서 해당 반 정보를 찾음
+
+            if (classInfo) {
+                // 등수에 따라 배경색 변경
+                let gradientStart = '#66BB6A'; // 기본값 (봄 시작)
+                let gradientEnd = '#AED581';   // 기본값 (봄 끝)
+                let overlayColor = 'rgba(102, 187, 106, 0.55)'; // 기본값 (봄)
+                let imageUrl = ''; // 이미지 URL을 초기화합니다.
+                switch (rank) {
+                    case 1: // 1위: 여름 숲
+                        gradientStart = '#1B5E20';
+                        gradientEnd = '#4CAF50';
+                        imageUrl = 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=2070&auto=format&fit=crop';
+                        break;
+                    case 2: // 2위: 봄 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#66BB6A';
+                        gradientEnd = '#AED581';
+                        overlayColor = 'rgba(102, 187, 106, 0.55)'; // 봄
+                        break;
+                    case 3: // 3위: 가을 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#FB8C00';
+                        gradientEnd = '#FFB300';
+                        overlayColor = 'rgba(255, 183, 77, 0.5)'; // 가을
+                        break;
+                    case 4: // 4위: 늦가을 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1476231682828-37e571bc172f?q=80&w=1974&auto=format&fit=crop';
+                        gradientStart = '#BF360C';
+                        gradientEnd = '#D84315';
+                        overlayColor = 'rgba(216, 133, 74, 0.55)'; // 늦가을
+                        break;
+                    case 5: // 5위: 초겨울 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?q=80&w=2074&auto=format&fit=crop';
+                        gradientStart = '#5D4037';
+                        gradientEnd = '#795548';
+                        overlayColor = 'rgba(141, 110, 99, 0.5)'; // 초겨울
+                        break;
+                    case 6: // 6위: 흙/땅
+                        imageUrl = 'https://images.unsplash.com/photo-1599411450202-35e88593350e?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#4E342E';
+                        gradientEnd = '#6D4C41';
+                        overlayColor = 'rgba(109, 76, 65, 0.55)'; // 흙
+                        break;
+                }
+
+                // 배경 이미지 및 오버레이 색상 적용
+                const bodyStyle = document.body.style;
+                if (imageUrl) {
+                    bodyStyle.backgroundImage = `url('${imageUrl}')`;
+                }
+                bodyStyle.setProperty('--overlay-color', overlayColor);
+                bodyStyle.setProperty('--rank-gradient-start', gradientStart);
+                bodyStyle.setProperty('--rank-gradient-end', gradientEnd);
+
+                // 반 정보가 있으면 페이지 내용을 동적으로 변경
+                document.querySelector('.team-name').innerHTML = `${classInfo.icon} ${classInfo.name} 정보 ${classInfo.icon}`;
+                document.querySelector('.current-team-indicator').textContent = `현재 보는 반: ${classInfo.name}`;
+
+                // 현재 랭킹 및 점수 차이 표시
+                const rankDisplayEl = document.getElementById('current-rank-display');
+                const rankDiffEl = document.getElementById('rank-diff-details');
+
+                if (rank && rankDisplayEl) {
+                    rankDisplayEl.innerHTML = `${rank}<span style="font-size: 0.4em; font-weight: 600;">위</span>`;
+                }
+
+                if (rankDiffEl && !isNaN(score)) {
+                    let diffHTML = '';
+                    if (!isNaN(prevScore)) {
+                        diffHTML += `<p class="diff-up">▲ ${rank - 1}위(상위)까지 <strong class="diff-up">${prevScore - score}점</strong> 남음</p>`;
+                    }
+                    if (!isNaN(nextScore)) {
+                        diffHTML += `<p class="diff-down">▼ ${rank + 1}위(하위)와 <strong class="diff-down">${score - nextScore}점</strong> 차이</p>`;
+                    }
+                    rankDiffEl.innerHTML = diffHTML;
+                }
+
+                // 학급 구성원 명단 생성
+                if (classInfo.members) {
+                    const leaderListEl = document.getElementById('member-list');
+                    const memberGridEl = document.getElementById('member-grid');
+
+                    // 담임, 반장 렌더링
+                    leaderListEl.innerHTML = `<li>${classInfo.members.leader}<span class="role-badge leader">담임</span></li>
+                                              <li>${classInfo.members.coLeader}<span class="role-badge co-leader">반장</span></li>`;
+
+                    // 일반 학생 렌더링
+                    const membersHTML = classInfo.members.list.map(member => `<span>${member}</span>`).join('');
+                    memberGridEl.innerHTML = membersHTML;
+                }
+
+                // 막대그래프 생성
+                if (classInfo.chartData) {
+                    const barCtx = document.getElementById('bar-chart').getContext('2d');
+                    new Chart(barCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['월', '화', '수', '목', '금'],
+                            datasets: [{
+                                label: '절약량 (kWh)',
+                                data: classInfo.chartData.weeklySavings,
+                                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+
+                    const pieCtx = document.getElementById('pie-chart').getContext('2d');
+                    new Chart(pieCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: ['냉난방', '조명', '기타'],
+                            datasets: [{
+                                label: '전력 사용 비중',
+                                data: classInfo.chartData.usageBreakdown,
+                                backgroundColor: ['rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)'],
+                                borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)'],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
