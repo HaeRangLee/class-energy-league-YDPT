@@ -1,7 +1,19 @@
 '''
-네, 알겠습니다. 제공해주신 JSON 구조를 요청하신 형식의 스키마로 작성했습니다.
 
-```
+================================================================================
+|                               개선이 필요한 것                                   |
+================================================================================
+
+달 계산할 떄 30일 빼는게 아니라 dateutil 같은 라이브러리 써서 정확하게 계산하기 --> 그냥 당장은 귀찮아서 넘어갔는데 나중에 고치기
+
+ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (파이어스토어에 반 목록 따로 저장해두기?)
+
+이상적인 상황을 가정한 코드이므로, 실제 운영 환경에서는 추가적인 예외 처리 및 최적화가 필요할 수 있음
+-> 지금 당장 생각나는 거는 OCR이 안돼서 ac_logs에 문서가 없는 경우(결측치 어떻게 처리할건지... -- 그리고 뭔가 딜레이가 생겨서 정확히 5분만에 들어오지 않은 경우 어떻게 할건지)
+-> finalize_daily_stats가 실행이 안되면 걍 꼬임
+
+
+
 /*
 ================================================================================
 |                        Firebase Realtime Database Schema               |
@@ -137,7 +149,7 @@ def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
         updated_daily_docs = _update_firestore_history(new_points_by_class)
 
         # 4. 업데이트된 최신 데이터를 바탕으로 Realtime DB용 최종 JSON을 생성하고 저장합니다.
-        #_create_and_save_rtdb_data(updated_daily_docs)
+        _create_and_save_rtdb_data(updated_daily_docs)
 
         logger.info("🎉 (10분 주기) 데이터 분석 및 저장을 성공적으로 완료했습니다.")
     except Exception as e:
@@ -275,7 +287,7 @@ def _generate_usage_metrics(class_id: str, today_cumulative_map: dict, historica
     # 2. 이번 주 누적 지수 계산
     weekly_index = daily_index
     # 오늘이 월요일이 아니라면, 이번 주 월요일부터 어제까지의 finalTotal을 더해줌
-    for i in range(1, now.weekday()): # 월요일(0) ~ 일요일(6)
+    for i in range(1, now.weekday()+1): # 월요일(0) ~ 일요일(6)
         day_to_add = (now - timedelta(days=i)).strftime('%Y-%m-%d')
         weekly_index += historical_data.get(class_id, {}).get(day_to_add, {}).get("finalTotal", 0)
 
@@ -291,16 +303,6 @@ def _generate_usage_metrics(class_id: str, today_cumulative_map: dict, historica
         "weeklyUsageIndex": round(weekly_index),
         "monthlyUsageIndex": round(monthly_index)
     }
-
-def _get_point_in_time_value(history_map: dict, target_time: str) -> float:
-    """'HH:MM' 형식의 시간대별 누적 맵에서 특정 시간의 값을 찾아 반환하는 유틸리티 함수"""
-    if target_time in history_map:
-        return history_map[target_time]
-    
-    # 정확한 시간이 없으면, 그 시간 바로 이전의 마지막 값을 찾음
-    available_times = sorted([t for t in history_map.keys() if t <= target_time], reverse=True)
-    return history_map[available_times[0]] if available_times else 0.0
-# main.py 파일의 헬퍼 함수 섹션에 아래 코드를 추가하거나 대체하세요.
 
 # 이 함수는 _generate_comparison_metrics 안에서 사용됩니다.
 def _get_point_in_time_value(history_map: dict, target_time: str) -> float:
@@ -382,37 +384,168 @@ def _generate_comparison_metrics(class_id: str, today_cumulative_map: dict, hist
         "vsLastWeek": round(vs_last_week, 1),
         "vsLastMonth": round(vs_last_month, 1)
     }
-
-
-"""
-def _create_and_save_rtdb_data(updated_daily_docs):
-
-    # 1. 계산에 필요한 모든 과거 데이터를 Firestore에서 딱 한 번만 불러온다.
-    historical_data = _get_all_historical_data() 
+def _create_system_wide_history(historical_data: dict) -> dict:
+    """
+    모든 반의 과거 데이터를 합산하여 시스템 전체의 과거 데이터를 생성합니다.
+    데이터가 누락된 경우를 고려하여 각 시점의 마지막 값을 기준으로 합산합니다.
+    """
+    system_history = {}
     
-    final_rtdb_data = { ... } # 최종 JSON 템플릿
+    # 분석할 모든 날짜와 모든 시간대를 수집
+    all_dates = set()
+    all_times_by_date = {}
+    for class_history in historical_data.values():
+        for date_str, day_data in class_history.items():
+            all_dates.add(date_str)
+            if date_str not in all_times_by_date:
+                all_times_by_date[date_str] = set()
+            all_times_by_date[date_str].update(day_data.get("cumulative_by_time", {}).keys())
+
+    # 각 날짜별로 순회
+    for date_str in sorted(list(all_dates)):
+        system_cumulative_map = {}
+        # 해당 날짜에 기록된 모든 시간대를 정렬하여 순회
+        sorted_times = sorted(list(all_times_by_date.get(date_str, set())))
+
+        for time_str in sorted_times:
+            total_at_time = 0
+            # 모든 반에 대해 해당 시점의 값을 더함
+            for class_id, class_history in historical_data.items():
+                day_data = class_history.get(date_str, {})
+                cumulative_map = day_data.get("cumulative_by_time", {})
+                # _get_point_in_time_value 함수를 재사용하여 누락된 데이터를 처리
+                total_at_time += _get_point_in_time_value(cumulative_map, time_str)
+            
+            system_cumulative_map[time_str] = total_at_time
+        
+        # 그날의 최종값(finalTotal)도 합산
+        final_total = sum(ch.get(date_str, {}).get("finalTotal", 0) for ch in historical_data.values())
+
+        system_history[date_str] = {
+            "finalTotal": final_total,
+            "cumulative_by_time": system_cumulative_map
+        }
+        
+    return system_history
+
+def _create_and_save_rtdb_data(updated_daily_docs: dict) -> None:
+    """Realtime DB에 저장할 최종 JSON을 생성하고 저장합니다."""
+    logger.info("- Realtime DB용 데이터 생성을 시작합니다.")
+    now = datetime.now(KST)
     all_class_ids = ["1-1", "1-2", "1-3", "1-4", "1-5", "1-6"]
+    # 1. 계산에 필요한 모든 과거 데이터를 Firestore에서 딱 한 번만 불러옵니다.
+    historical_data = _get_all_historical_data()
 
-    # 2. 메모리에 있는 데이터를 가지고 각 반의 지표를 계산한다.
-    for class_id in all_class_ids:
-        
-        # '오늘'의 최신 데이터는 updated_daily_docs에서 가져옴
-        today_data = updated_daily_docs.get(class_id)
+    final_rtdb_data = {
+        "mainPage": {},
+        "detailPage": {},
+        "comparisonPage": {"classTrends": []}
+    }
 
-        # (계산 전문가 1) 메모리의 과거 데이터로 summary 계산
-        summary = generate_usage_metrics(class_id, today_data, historical_data)
-        
-        # (계산 전문가 2) 메모리의 과거 데이터로 comparison 계산
-        comparison = generate_comparison_metrics(class_id, today_data, historical_data)
-
-        # 계산 결과를 최종 JSON에 채워넣기
-        final_rtdb_data["detailPage"][class_id]["summary"] = summary
-        final_rtdb_data["detailPage"][class_id]["comparison"] = comparison
-        # ... trends 등 나머지 데이터도 채워넣기 ...
+    all_detail_pages = {}
     
-    # 3. 모든 반의 계산이 끝난 후, 랭킹 등 2차 계산 수행
-    # ...
+    # 2. 각 반의 detailPage 데이터를 계산합니다.
+    for class_id in all_class_ids:
+        today_cumulative_map = updated_daily_docs.get(class_id, {})
+        class_history = historical_data.get(class_id, {})
+        
+        # summary 계산
+        summary = _generate_usage_metrics(class_id, today_cumulative_map, class_history)
+        
+        # comparison 계산
+        comparison = _generate_comparison_metrics(class_id, today_cumulative_map, class_history)
+        
+        # trends 데이터 가공
+        trends = _format_trends_data(today_cumulative_map, class_history)
+        
+        all_detail_pages[class_id] = {
+            "className": f"1학년 {class_id.split('-')[1]}반", # 예시
+            "summary": summary,
+            "comparison": comparison,
+            "trends": trends
+        }
+    final_rtdb_data["detailPage"] = all_detail_pages
 
-    # 4. 최종 JSON을 Realtime DB에 저장
-    # ...
-"""
+    # 3. mainPage 및 comparisonPage 데이터를 계산합니다.
+    final_rtdb_data["mainPage"] = _generate_main_page_data(all_detail_pages)
+    final_rtdb_data["comparisonPage"] = _generate_comparison_page_data(all_detail_pages)
+    
+    # 4. 최종 데이터를 Realtime Database에 저장합니다.
+    rtdb_ref = db.reference('/')
+    rtdb_ref.set(final_rtdb_data)
+    logger.info("- Realtime DB에 최종 데이터를 저장했습니다.")
+def _format_trends_data(today_map: dict, history: dict) -> dict:
+    """그래프용 trends 데이터를 최종 배열 형식으로 가공합니다."""
+    now = datetime.now(KST)
+    
+    # last7Days 가공
+    last7days_arr = []
+    for i in range(7):
+        date = now - timedelta(days=i)
+        date_str = date.strftime('%Y-%m-%d')
+        value = history.get(date_str, {}).get("finalTotal", 0)
+        last7days_arr.append({"date": date_str, "value": round(value)})
+    
+    # last4Weeks, todayRealtime 가공 로직 추가
+    
+    return {
+        "last7Days": sorted(last7days_arr, key=lambda x: x['date']),
+        "last4Weeks": [], # TODO
+        "todayRealtime": [{"time": t, "value": round(v)} for t, v in sorted(today_map.items())]
+    }
+
+def _generate_main_page_data(all_details: dict, historical_data: dict) -> dict:
+    """mainPage 데이터를 생성합니다."""
+    # 1. 랭킹 생성
+    ranking = sorted(
+        [
+            {"classId": cid, "className": d["className"], "monthlyUsageIndex": d["summary"]["monthlyUsageIndex"]}
+            for cid, d in all_details.items()
+        ],
+        key=lambda x: x["monthlyUsageIndex"]
+    )
+
+    # 2. 시스템 전체의 과거 데이터를 생성
+    system_history = _create_system_wide_history(historical_data)
+    
+    # 3. 시스템 전체의 '오늘' 데이터 합산
+    system_today_map = {}
+    for details in all_details.values():
+        for time_str, value in details["trends"]["todayRealtime"]:
+            system_today_map[time_str] = system_today_map.get(time_str, 0) + value
+
+    # 4. _generate_comparison_metrics 함수 재사용!
+    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history})
+    
+    return {
+        "monthlyRanking": ranking,
+        "systemIndexChangeVsLastWeek": system_comparison["vsLastWeek"],
+        "lastUpdated": datetime.now(KST).isoformat()
+    }
+
+def _generate_comparison_page_data(all_details: dict, historical_data: dict) -> dict:
+    """comparisonPage 데이터를 생성합니다."""
+    # 1. 시스템 전체의 과거 및 오늘 데이터 생성 (mainPage와 동일)
+    system_history = _create_system_wide_history(historical_data)
+    system_today_map = {}
+    for details in all_details.values():
+        for time_obj in details["trends"]["todayRealtime"]:
+            time_str, value = time_obj["time"], time_obj["value"]
+            system_today_map[time_str] = system_today_map.get(time_str, 0) + value
+
+    # 2. 기존 함수들을 재사용하여 시스템 전체의 summary와 comparison 계산
+    system_summary = _generate_usage_metrics("system", system_today_map, {"system": system_history})
+    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history})
+    
+    # 3. classTrends 데이터 구성
+    class_trends = [
+        {"classId": cid, **d["trends"]} for cid, d in all_details.items()
+    ]
+
+    return {
+        "summary": system_summary,
+        "comparison": system_comparison,
+        "classTrends": class_trends,
+        "lastUpdated": datetime.now(KST).isoformat()
+    }
+
