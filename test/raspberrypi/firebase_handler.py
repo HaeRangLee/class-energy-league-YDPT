@@ -51,3 +51,14 @@ class FirebaseHandler:
         except Exception as e:
             logging.error(f"데이터 전송 중 에러 발생: {e}")
             # 여기서 에러가 나면 다음 사이클에서 다시 시도하게 됨
+
+'''
+firestore 'ac_logs' 컬렉션의 문서 구조(이대로 Firestore에 저장):
+  ├─ classId (String): "1-1"
+  ├─ timestamp (Timestamp): 2025-01-01T12:00:00Z (서버 타임스탬프)
+  ├─ isOn (Boolean): true
+  ├─ mode (String): "냉방"
+  ├─ temperature (Number-int): 24
+  ├─ fanSpeed (String): "강풍"
+  └─ usageIndex (Number-float): 7.8
+'''
