@@ -12,8 +12,6 @@ ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (�
 -> 지금 당장 생각나는 거는 OCR이 안돼서 ac_logs에 문서가 없는 경우(결측치 어떻게 처리할건지... -- 그리고 뭔가 딜레이가 생겨서 정확히 5분만에 들어오지 않은 경우 어떻게 할건지)
 -> finalize_daily_stats가 실행이 안되면 걍 꼬임
 
-
-
 /*
 ================================================================================
 |                        Firebase Realtime Database Schema               |
@@ -128,8 +126,8 @@ options.set_global_options(region="asia-northeast3", memory=options.MemoryOption
 # |                         10분마다 실행되는 메인 함수                              |
 # =================================================================================
 
-#@https_fn.on_call
-@scheduler_fn.on_schedule(schedule="every 10 minutes")
+@https_fn.on_call
+#@scheduler_fn.on_schedule(schedule="every 10 minutes")
 def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
     """
     10분마다 실행되어 실시간 데이터 집계 및 Realtime DB 업데이트를 수행합니다.
