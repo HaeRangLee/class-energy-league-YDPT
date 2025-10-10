@@ -1,0 +1,789 @@
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반 정보 - ydp</title>
+    <style>
+        :root {
+            --board-bg: #fafdfa;
+            --shadow-color: rgba(46, 81, 46, 0.1);
+            --title-color: #1b5e20;
+            --border-color: #dceddc;
+            --name-color: #444;
+            --text-color: #555;
+        }
+
+        /* 다크 모드 테마 변수 */
+        body[data-theme="dark"] {
+            --board-bg: #2c3e50;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --title-color: #a5d6a7;
+            --border-color: #34495e;
+            --name-color: #ecf0f1;
+            --text-color: #bdc3c7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #E8F5E9;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            position: relative; /* For pseudo-element overlay */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        /* 이미지 위에 반투명 오버레이를 추가하여 가독성 확보 */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: var(--overlay-color, rgba(232, 245, 233, 0.6)); /* JS에서 제어할 색상 변수 */
+            z-index: -1; /* 콘텐츠 뒤로 보내기 */
+        }
+
+        /* 다크 모드 개별 스타일 */
+        body[data-theme="dark"] .rank-display-section {
+            background-color: #34495e;
+        }
+
+        .info-card {
+            margin-top: 40px;
+            background-color: var(--board-bg);
+            border-radius: 20px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+            width: 90%;
+            max-width: 900px; /* 2단 레이아웃을 위해 너비 확장 */
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .team-name {
+            text-align: center;
+            color: var(--title-color);
+            margin-bottom: 30px;
+            font-weight: 700;
+            font-size: 2em;
+        }
+
+        .info-section {
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: var(--name-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+
+        .info-section p, .info-section li {
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .back-link {
+            display: inline-block;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+        .back-link:hover {
+            opacity: 0.9;
+        }
+
+        .current-team-indicator {
+            position: fixed; /* 스크롤해도 화면 상단에 고정 */
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            letter-spacing: 1px;
+        }
+
+        .chart-container { max-height: 280px; margin-top: 15px; }
+
+        /* 2단 레이아웃을 위한 스타일 */
+        .info-content-wrapper {
+            display: flex;
+            gap: 30px; /* 열 사이의 간격 */
+        }
+
+        .info-column, .chart-column {
+            flex: 1; /* 각 열이 동일한 너비를 가지도록 설정 */
+            min-width: 0; /* flex 아이템의 크기가 줄어들 수 있도록 설정 */
+        }
+
+        /* 화면이 좁아지면 1단으로 변경 (반응형) */
+        @media (max-width: 768px) {
+            .info-content-wrapper {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .info-card {
+                padding: 20px;
+            }
+            .team-name { font-size: 1.8em; }
+            .chart-container { max-height: 250px; }
+        }
+
+        /* 현재 랭킹 표시 스타일 */
+        .rank-display-section {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #f8fbf8;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .current-rank-display {
+            font-size: 5em;
+            font-weight: 800;
+            line-height: 1;
+            /* 텍스트에 그라데이션 적용 */
+            background-image: linear-gradient(45deg, var(--rank-gradient-start, #388E3C), var(--rank-gradient-end, #81C784));
+            -webkit-background-clip: text; /* Safari/Chrome */
+            background-clip: text;
+            color: transparent;
+        }
+        .rank-diff-details p, .comparison-item {
+            margin: 5px 0;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        .comparison-item.increase strong, .diff-up strong {
+            color: #d32f2f; /* 붉은색 */
+        }
+        .comparison-item.decrease strong, .diff-down strong {
+            color: #1976d2; /* 푸른색 */
+        }
+        .comparison-item.same strong {
+            color: var(--text-color);
+        }
+
+
+        /* 학급 구성원 명단 스타일 */
+        #member-list {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 10px;
+        }
+        #member-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .role-badge {
+            font-size: 0.8em;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            color: white;
+        }
+        .leader { background-color: #FFB300; } /* Amber */
+        .co-leader { background-color: #78909C; } /* Blue Grey */
+
+        /* 일반 학생 그리드 스타일 */
+        .member-grid {
+            display: grid;
+            /* 화면 너비에 따라 자동으로 열 개수 조절 */
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px 12px; /* 세로, 가로 간격 */
+            margin-top: 15px;
+        }
+        .member-grid span {
+            font-size: 0.9em;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        /* 3info.html에서 가져온 스타일 */
+        .site-header {
+            width: 100%;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            display: flex;
+            position: relative;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 0;
+            font-size: 1.6em;
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .site-header::before,
+        .site-header::after {
+            content: '🌿';
+            font-size: 0.7em;
+            margin: 0 15px;
+            opacity: 0.9;
+        }
+        .settings-btn {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            background: none;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            z-index: 1001;
+            transition: opacity 0.2s ease;
+        }
+        .settings-btn:hover {
+            opacity: 0.9;
+        }
+        .header-home-btn {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--board-bg);
+            text-decoration: none;
+            font-size: 0.6em;
+            font-weight: 600;
+            padding: 6px 10px;
+            border: 1px solid var(--board-bg);
+            border-radius: 6px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .header-home-btn:hover { background-color: var(--board-bg); color: var(--title-color); }
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100%;
+            background-color: #fff;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: right 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings-panel.open {
+            right: 0;
+        }
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .settings-header h2 { margin: 0; font-size: 1.3em; color: var(--title-color); }
+        .close-btn { background: none; border: none; font-size: 2em; cursor: pointer; color: #999; }
+        .settings-content { padding: 20px; }
+        .settings-scroll-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+        .setting-item { margin-bottom: 20px; }
+        .setting-item label { display: block; font-weight: 600; color: var(--name-color); margin-bottom: 8px; }
+        .setting-item select, .setting-item input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        body[data-theme="dark"] .settings-panel { background-color: #2c3e50; box-shadow: -4px 0 15px rgba(0,0,0,0.4); }
+        body[data-theme="dark"] .settings-header { border-bottom-color: #34495e; }
+        body[data-theme="dark"] .close-btn { color: #bdc3c7; }
+        body[data-theme="dark"] .setting-item select,
+        body[data-theme="dark"] .setting-item input { background-color: #34495e; border-color: #4a637b; color: #ecf0f1; }
+        .accordion-item { border-bottom: 1px solid var(--border-color); }
+        .accordion-header {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--name-color);
+            cursor: pointer;
+        }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s ease-out; }
+        .class-link-grid { display: flex; flex-direction: column; gap: 10px; }
+        .class-link-grid a {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 5px;
+            color: var(--title-color);
+            background-color: var(--border-color);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 1.5em;
+            border-radius: 8px;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .class-link-grid a:hover { transform: scale(1.05); background-color: var(--rank-number-color); color: var(--board-bg); }
+        /* .my-rank is not used in info.html, removing its style */
+        /* .my-rank {
+            border-color: var(--my-rank-border) !important;
+            border-width: 2px;
+            box-shadow: 0 0 12px var(--my-rank-shadow);
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header" style="margin-top: 42px;">
+        <a href="home.html" class="header-home-btn">홈</a>
+        YDP 에너지 절약 대회
+    </header>
+    <button class="settings-btn" id="settings-btn" aria-label="더보기 열기">더보기</button>
+    <div class="overlay" id="overlay"></div>
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-header">
+            <h2>더보기</h2>
+            <button class="close-btn" id="close-settings-btn" aria-label="더보기 닫기">&times;</button>
+        </div>
+        <div class="settings-scroll-container">
+            <div class="accordion-item">
+                <button class="accordion-header">설정</button>
+                <div class="accordion-content">
+                    <div class="settings-content">
+                        <div class="setting-item">
+                            <label for="theme-select">테마 선택</label>
+                            <select id="theme-select">
+                                <option value="light">라이트 모드</option>
+                                <option value="dark">다크 모드</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="my-class-input">내 반 강조하기</label>
+                            <select id="my-class-select"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <button class="accordion-header">반별 페이지</button>
+                <div class="accordion-content">
+                    <div class="settings-content" id="class-links-content"></div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
+            </div>
+            <div class="accordion-item">
+                <button id="reset-settings-btn" class="accordion-header" style="color: #c62828;">설정 초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="current-team-indicator"></div>
+    
+    <div class="info-card">
+        <h1 class="team-name">🌳 1반 정보 🌳</h1>
+
+        <div class="info-content-wrapper">
+            <div class="info-column">
+                <div class="info-section rank-display-section">
+                    <h3>현재 랭킹</h3>
+                    <div class="current-rank-display" id="current-rank-display">?위</div>
+                    <div class="rank-diff-details" id="rank-diff-details"></div>
+                </div>
+                <div class="info-section">
+                    <h3>사용량 증감 비교</h3>
+                    <div id="usage-comparison-details"></div>
+                </div>
+            </div>
+            <div class="chart-column">
+                <div class="info-section">
+                    <h3>일간 사용량</h3>
+                    <div class="chart-container"><canvas id="daily-chart"></canvas></div>
+                </div>
+                <div class="info-section">
+                    <h3>주간 사용량</h3>
+                    <div class="chart-container"><canvas id="weekly-chart"></canvas></div>
+                </div>
+                <div class="info-section">
+                    <h3>실시간 사용량</h3>
+                    <div class="chart-container"><canvas id="realtime-chart"></canvas></div>
+                </div>
+            </div>
+        </div>
+        <a href="home.html" class="back-link">랭킹으로 돌아가기</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
+    <script>
+        // 페이지가 로드될 때 실행
+        document.addEventListener('DOMContentLoaded', () => { // Removed the myClassInput related code
+            // 저장된 테마를 불러와 적용
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+
+            // 차트의 글자색을 테마에 맞게 설정
+            const chartFontColor = savedTheme === 'dark' ? '#ecf0f1' : '#555';
+            Chart.defaults.color = chartFontColor;
+            Chart.defaults.borderColor = savedTheme === 'dark' ? '#34495e' : '#dceddc';
+
+            // '더보기' 패널 관련 로직
+            const settingsBtn = document.getElementById('settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings-btn');
+            const settingsPanel = document.getElementById('settings-panel');
+            const overlay = document.getElementById('overlay');
+
+            const toggleSettingsPanel = () => {
+                settingsPanel.classList.toggle('open');
+                overlay.classList.toggle('active');
+            };
+
+            const applyTheme = (theme) => {
+                document.body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeSelect.value = theme;
+                // 테마 변경 시 차트 다시 그리기
+                window.location.reload(); 
+            };
+
+            // 아코디언 메뉴
+            document.querySelectorAll('.accordion-header').forEach(button => {
+                if (button.tagName === 'BUTTON') {
+                    button.addEventListener('click', () => {
+                        const content = button.nextElementSibling;
+                        if (content.style.maxHeight) {
+                            content.style.maxHeight = null;
+                        } else {
+                            content.style.maxHeight = content.scrollHeight + "px";
+                        }
+                    });
+                }
+            });
+
+            // 반별 페이지 링크 생성
+            // This part is for the settings panel, it should be updated to use realtimedata
+            const classLinksContent = document.getElementById('class-links-content'); // This is for the settings panel
+            const rankingDataForLinks = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+            if (classLinksContent) {
+                const grid = document.createElement('div');
+                grid.className = 'class-link-grid';
+                rankingDataForLinks.forEach((team, index) => {
+                    const rank = index + 1;
+                    const prevScore = (index > 0) ? rankingDataForLinks[index - 1].monthlyUsageIndex : '';
+                    const nextScore = (index < rankingDataForLinks.length - 1) ? rankingDataForLinks[index + 1].monthlyUsageIndex : '';
+                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${team.monthlyUsageIndex}&prevScore=${prevScore}&nextScore=${nextScore}">${team.className}</a>`;
+                });
+                classLinksContent.appendChild(grid);
+            }
+
+            // The settings panel logic for theme and myClassInput needs to be re-added, but myClassInput should not highlight anything on info.html
+            // Re-adding the settings panel logic for info.html
+            const themeSelect = document.getElementById('theme-select');
+            const myClassSelect = document.getElementById('my-class-select');
+
+            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+            settingsBtn.addEventListener('click', toggleSettingsPanel);
+            closeSettingsBtn.addEventListener('click', toggleSettingsPanel);
+            overlay.addEventListener('click', toggleSettingsPanel);
+
+            // 드롭다운 메뉴에 반 목록 추가
+            myClassSelect.innerHTML = '<option value="">반 선택</option>';
+            realtimedata.mainPage.monthlyRanking.forEach(team => {
+                myClassSelect.innerHTML += `<option value="${team.className}">${team.className}</option>`;
+            });
+
+            // For info.html, myClassInput should only save the value, not highlight anything on this page.
+            myClassSelect.addEventListener('change', (e) => {
+                localStorage.setItem('myClass', e.target.value);
+            });
+            const savedMyClass = localStorage.getItem('myClass');
+            if (savedMyClass) {
+                myClassSelect.value = savedMyClass;
+            }
+
+            // 설정 초기화 버튼
+            const resetBtn = document.getElementById('reset-settings-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (confirm('테마와 내 반 강조 설정을 모두 초기화하시겠습니까?')) {
+                        localStorage.removeItem('theme');
+                        localStorage.removeItem('myClass');
+                        window.location.reload();
+                    }
+                });
+            }
+
+
+            // --- 페이지 고유 로직 시작 ---
+            const urlParams = new URLSearchParams(window.location.search); // This is already defined above, but it's fine.
+            const classId = urlParams.get('classId'); // URL에서 'classId' 파라미터 값을 가져옴 (예: '1-1')
+            const rank = parseInt(urlParams.get('rank'), 10); // URL에서 'rank' 파라미터 값을 숫자로 가져옴
+            const score = parseInt(urlParams.get('score'), 10); // This score is from the URL, which is monthlyUsageIndex
+            const prevScore = parseInt(urlParams.get('prevScore'), 10); // This is also monthlyUsageIndex
+            const nextScore = parseInt(urlParams.get('nextScore'), 10); // This is also monthlyUsageIndex
+            const classInfo = realtimedata.detailPage[classId]; // 데이터 객체에서 해당 반 정보를 찾음
+
+            if (classInfo) {
+                // 등수에 따라 배경색 변경
+                let gradientStart = '#66BB6A'; // 기본값 (봄 시작)
+                let gradientEnd = '#AED581';   // 기본값 (봄 끝)
+                let overlayColor = 'rgba(102, 187, 106, 0.55)'; // 기본값 (봄)
+                let imageUrl = ''; // 이미지 URL을 초기화합니다.
+                
+                const actualRankEntry = realtimedata.mainPage.monthlyRanking.find(item => item.classId === classId);
+                const actualRank = actualRankEntry ? realtimedata.mainPage.monthlyRanking.indexOf(actualRankEntry) + 1 : rank; // Fallback to URL rank if not found
+                switch (actualRank) {
+                    case 1: // 1위: 여름 숲
+                        gradientStart = '#1B5E20';
+                        gradientEnd = '#4CAF50';
+                        imageUrl = 'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=2070&auto=format&fit=crop';
+                        break;
+                    case 2: // 2위: 봄 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#66BB6A';
+                        gradientEnd = '#AED581';
+                        overlayColor = 'rgba(102, 187, 106, 0.55)'; // 봄
+                        break;
+                    case 3: // 3위: 가을 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#FB8C00';
+                        gradientEnd = '#FFB300';
+                        overlayColor = 'rgba(255, 183, 77, 0.5)'; // 가을
+                        break;
+                    case 4: // 4위: 늦가을 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1476231682828-37e571bc172f?q=80&w=1974&auto=format&fit=crop';
+                        gradientStart = '#BF360C';
+                        gradientEnd = '#D84315';
+                        overlayColor = 'rgba(216, 133, 74, 0.55)'; // 늦가을
+                        break;
+                    case 5: // 5위: 초겨울 숲
+                        imageUrl = 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?q=80&w=2074&auto=format&fit=crop';
+                        gradientStart = '#5D4037';
+                        gradientEnd = '#795548';
+                        overlayColor = 'rgba(141, 110, 99, 0.5)'; // 초겨울
+                        break;
+                    case 6: // 6위: 흙/땅
+                        imageUrl = 'https://images.unsplash.com/photo-1599411450202-35e88593350e?q=80&w=2070&auto=format&fit=crop';
+                        gradientStart = '#4E342E';
+                        gradientEnd = '#6D4C41';
+                        overlayColor = 'rgba(109, 76, 65, 0.55)'; // 흙
+                        break;
+                }
+
+                // 배경 이미지 및 오버레이 색상 적용
+                const bodyStyle = document.body.style;
+                if (imageUrl) {
+                    bodyStyle.backgroundImage = `url('${imageUrl}')`;
+                }
+                bodyStyle.setProperty('--overlay-color', overlayColor);
+                bodyStyle.setProperty('--rank-gradient-start', gradientStart);
+                bodyStyle.setProperty('--rank-gradient-end', gradientEnd);
+
+                // 반 정보가 있으면 페이지 내용을 동적으로 변경
+                document.querySelector('.team-name').innerHTML = `🌳 ${classInfo.className} 정보 🌳`; // Use className, hardcoded icon
+                document.querySelector('.current-team-indicator').textContent = `현재 보는 반: ${classInfo.className}`;
+
+                // 현재 랭킹 및 점수 차이 표시
+                const rankDisplayEl = document.getElementById('current-rank-display');
+                const rankDiffEl = document.getElementById('rank-diff-details');
+
+                if (rank && rankDisplayEl) {
+                    rankDisplayEl.innerHTML = `${rank}<span style="font-size: 0.4em; font-weight: 600;">위</span>`;
+                }
+
+                if (rankDiffEl && !isNaN(score)) {
+                    let diffHTML = '';
+                    if (!isNaN(prevScore) && rank > 1) {
+                        diffHTML += `<p class="diff-up">▲ ${rank - 1}위와 <strong class="diff-up">${score - prevScore}점</strong> 차이</p>`;
+                    }
+                    if (!isNaN(nextScore) && rank < realtimedata.mainPage.monthlyRanking.length) {
+                        diffHTML += `<p class="diff-down">▼ ${rank + 1}위와 <strong class="diff-down">${nextScore - score}점</strong> 차이</p>`;
+                    }
+                    rankDiffEl.innerHTML = diffHTML;
+                }
+
+                // 사용량 증감 비교 표시
+                const comparison = classInfo.comparison;
+                const comparisonEl = document.getElementById('usage-comparison-details');
+
+                if (comparison && comparisonEl) {
+                    const formatComparison = (value, period) => {
+                        if (value > 0) {
+                            return `<p class="comparison-item increase">▲ ${period} 대비 <strong>${value.toFixed(1)}%</strong> 증가</p>`;
+                        } else if (value < 0) {
+                            return `<p class="comparison-item decrease">▼ ${period} 대비 <strong>${Math.abs(value).toFixed(1)}%</strong> 감소</p>`;
+                        } else {
+                            return `<p class="comparison-item same">- ${period} 대비 변동 없음</p>`;
+                        }
+                    };
+
+                    let comparisonHTML = '';
+                    comparisonHTML += formatComparison(comparison.vsLastDay, '어제');
+                    comparisonHTML += formatComparison(comparison.vsLastWeek, '지난 주');
+                    comparisonHTML += formatComparison(comparison.vsLastMonth, '지난 달');
+                    comparisonEl.innerHTML = comparisonHTML;
+                }
+
+                // 학급 구성원 명단 생성
+                if (classInfo.members) {
+                    const leaderListEl = document.getElementById('member-list');
+                    const memberGridEl = document.getElementById('member-grid');
+
+                    if(leaderListEl) {
+                        leaderListEl.innerHTML = `<li>${classInfo.members.leader}<span class="role-badge leader">담임</span></li>
+                                                  <li>${classInfo.members.coLeader}<span class="role-badge co-leader">반장</span></li>`;
+                    }
+                    if(memberGridEl) {
+                        const membersHTML = classInfo.members.list.map(member => `<span>${member}</span>`).join('');
+                        memberGridEl.innerHTML = membersHTML;
+                    }
+                }
+
+                // 차트 생성
+                if (classInfo.trends) {
+                    // 복합 차트 생성 함수
+                    const createComboChart = (canvasId, periodKey, labelKey, valueKey) => {
+                        const datasets = [];
+                        const allClassData = Object.values(realtimedata.detailPage);
+                        const currentClassTrend = classInfo.trends[periodKey] || [];
+                        const labels = currentClassTrend.map(d => d[labelKey]);
+
+                        // 1. 현재 반의 막대그래프 데이터
+                        datasets.push({
+                            type: 'bar',
+                            label: `${classInfo.className} 사용량`,
+                            data: currentClassTrend.map(d => d[valueKey]),
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        });
+
+                        // 2. 전체 반의 평균 꺾은선 그래프 데이터
+                        const averageData = currentClassTrend.map((_, i) => {
+                            const sum = allClassData.reduce((acc, c) => acc + (c.trends[periodKey]?.[i]?.[valueKey] || 0), 0);
+                            const count = allClassData.filter(c => c.trends[periodKey]?.[i]?.[valueKey] !== undefined).length;
+                            return count > 0 ? (sum / count).toFixed(2) : 0;
+                        });
+
+                        datasets.push({
+                            type: 'line',
+                            label: '전체 평균',
+                            data: averageData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            order: 0 // 막대그래프 위에 그려지도록 순서 지정
+                        });
+
+                        // 차트 생성
+                        const ctx = document.getElementById(canvasId).getContext('2d');
+                        new Chart(ctx, {
+                            type: 'bar', // 기본 타입을 bar로 해야 복합 차트가 제대로 동작
+                            data: { labels, datasets },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: { y: { beginAtZero: false } }, // y축을 데이터 범위에 맞게 조절
+                                plugins: {
+                                    legend: {
+                                        onClick: Chart.defaults.plugins.legend.onClick // 범례 클릭 시 그래프 토글 기능 활성화
+                                    }
+                                }
+                            }
+                        });
+                    };
+
+                    // 일간, 주간, 월간 차트 생성
+                    createComboChart('daily-chart', 'last7Days', 'date', 'value');
+                    createComboChart('weekly-chart', 'last4Weeks', 'week', 'value');
+
+                    // 실시간 차트 생성 함수
+                    const createRealtimeChart = (canvasId, periodKey, labelKey, valueKey) => {
+                        const datasets = [];
+                        const allClassData = Object.values(realtimedata.detailPage);
+                        const currentClassTrend = classInfo.trends[periodKey] || [];
+                        const labels = currentClassTrend.map(d => d[labelKey]);
+
+                        // 1. 현재 반의 실시간 데이터 (꺾은선)
+                        datasets.push({
+                            label: `${classInfo.className} 실시간 사용량`,
+                            data: currentClassTrend.map(d => d[valueKey]),
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            fill: true,
+                            tension: 0.4 // 부드러운 곡선
+                        });
+
+                        // 2. 전체 반의 평균 실시간 데이터 (점선)
+                        const averageData = currentClassTrend.map((_, i) => {
+                            const sum = allClassData.reduce((acc, c) => acc + (c.trends[periodKey]?.[i]?.[valueKey] || 0), 0);
+                            const count = allClassData.filter(c => c.trends[periodKey]?.[i]?.[valueKey] !== undefined).length;
+                            return count > 0 ? (sum / count).toFixed(2) : 0;
+                        });
+
+                        datasets.push({
+                            label: '전체 평균',
+                            data: averageData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderDash: [5, 5], // 점선
+                            fill: false,
+                            tension: 0.4
+                        });
+
+                        // 차트 생성
+                        const ctx = document.getElementById(canvasId).getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: { labels, datasets },
+                            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
+                        });
+                    };
+
+                    createRealtimeChart('realtime-chart', 'todayRealtime', 'time', 'value');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

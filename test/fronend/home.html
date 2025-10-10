@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ydp</title>
+    <style>
+        :root {
+            --bg-overlay: rgba(232, 245, 233, 0.5);
+            --board-bg: #fafdfa;
+            --shadow-color: rgba(46, 81, 46, 0.1);
+            --title-color: #1b5e20;
+            --border-color: #dceddc;
+            --rank-number-color: #558b2f;
+            --name-color: #444;
+            --rank-name-color: #6a8a6b;
+            --score-color: #4CAF50;
+            --link-color: #b0b0b0;
+            --link-hover-color: #388E3C;
+            --rank1-bg: #F1F8E9; --rank1-border: #7CB342;
+            --rank2-bg: #E8F5E9; --rank2-border: #4CAF50;
+            --rank3-bg: #EFEBE9; --rank3-border: #A1887F;
+            --my-rank-border: #FFD700; /* Gold for highlighting 'me' */
+            --my-rank-shadow: rgba(255, 215, 0, 0.5);
+        }
+
+        /* 다크 모드 테마 변수 */
+        body[data-theme="dark"] {
+            --bg-overlay: rgba(20, 20, 20, 0.6);
+            --board-bg: #2c3e50; /* 어두운 남색 계열 */
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --title-color: #a5d6a7; /* 밝은 녹색 */
+            --border-color: #34495e;
+            --rank-number-color: #81c784;
+            --name-color: #ecf0f1; /* 밝은 회색 */
+            --rank-name-color: #95a5a6; /* 중간 회색 */
+            --score-color: #a5d6a7;
+            --link-color: #7f8c8d;
+            --link-hover-color: #81c784;
+            --rank1-bg: #3a5169; --rank1-border: #7CB342;
+            --rank2-bg: #34495e; --rank2-border: #4CAF50;
+            --rank3-bg: #314457; --rank3-border: #A1887F;
+        }
+
+
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            /* Faint pixel art forest background with a strong green overlay */
+            /* Light green background to maintain the theme */
+            background-color: #E8F5E9;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Align content to the top */
+            align-items: center;
+            height: 100vh; /* Fix height to viewport height */
+            overflow: hidden; /* Prevent the whole page from scrolling */
+            margin: 0;
+        }
+        body[data-theme="dark"] {
+            background-color: #1c2833;
+        }
+        body[data-theme="dark"] li {
+            background-color: #34495e;
+        }
+        .ranking-board {
+            /* Add some space from the new site header */
+            margin-top: 40px;
+            margin-bottom: 20px; /* Add some bottom margin */
+            display: flex; /* Enable flexbox for internal layout */
+            flex-direction: column; /* Stack children vertically */
+            flex: 1; /* Allow this to grow and fill available space */
+            background-color: var(--board-bg);
+            border-radius: 16px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+            width: 90%;
+            max-width: 500px;
+            padding: 25px;
+            box-sizing: border-box;
+            min-height: 0; /* Flexbox fix for overflow */
+        }
+        .site-header {
+            width: 100%;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            /* Use flexbox to center content and add icons */
+            display: flex;
+            justify-content: center;
+            position: relative; /* 자식 요소의 position 기준 */
+            align-items: center;
+            padding: 15px 0;
+            font-size: 1.6em; /* 폰트 크기 증가 */
+            font-weight: 700;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        /* Add cute nature icons on both sides of the title */
+        .site-header::before,
+        .site-header::after {
+            content: '🌿';
+            font-size: 0.7em;
+            margin: 0 15px;
+            opacity: 0.9;
+        }
+        h1 {
+            text-align: center;
+            color: var(--title-color);
+            margin-bottom: 25px;
+            font-weight: 700;
+            font-size: 1.8em;
+        }
+        ol {
+            list-style-type: none;
+            padding: 0;
+            padding-bottom: 15px;
+            counter-reset: ranking-counter 3; /* 4위부터 카운터 시작 */
+            overflow-y: auto; /* Make the list scrollable */
+            flex-grow: 1; /* Allow list to fill space */
+            padding-right: 10px; /* Space for the scrollbar */
+            margin-top: 5px; /* 시상대와의 간격 축소 */
+        }
+        li {
+            background-color: #fff;
+            margin-bottom: 12px; /* 간격 축소 */
+            padding: 15px 20px; /* 내부 여백 증가 */
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            counter-increment: ranking-counter;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            position: relative;
+            cursor: pointer;
+        }
+        /* 순위 변경 애니메이션을 위한 스타일 */
+        .ranking-item-move {
+            transition: transform 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+        }
+
+        /* 순위 변동 화살표 스타일 */
+        .rank-change-indicator {
+            position: absolute;
+            right: 50px; /* 상세 정보 링크(›) 옆에 위치 */
+            top: 50%;
+            font-size: 1.6em;
+            font-weight: bold;
+            pointer-events: none; /* 클릭 방해하지 않도록 설정 */
+            animation: fade-and-rise 1.5s ease-out forwards;
+        }
+        .rank-change-indicator.up { color: #4CAF50; } /* 초록색 */
+        .rank-change-indicator.down { color: #f44336; } /* 빨간색 */
+
+        @keyframes fade-and-rise {
+            0% {
+                opacity: 1;
+                transform: translateY(-50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-150%) scale(0.7);
+            }
+        }
+        li:hover {
+            transform: translateY(-3px); /* Simplified hover effect */
+            box-shadow: 0 4px 12px rgba(46, 81, 46, 0.12);
+        }
+        li::before {
+            content: counter(ranking-counter);
+            font-weight: 700;
+            font-size: 1.4em; /* 순위 숫자 크기 증가 */
+            color: var(--rank-number-color);
+            margin-right: 20px; /* 간격 조정 */
+            min-width: 28px;
+            text-align: center;
+        }
+        .name-rank-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .name {
+            font-weight: 700; /* 폰트 굵기 증가 */
+            color: var(--name-color);
+            font-size: 1.1em; /* 이름 크기 증가 */
+        }
+        .rank-name {
+            font-size: 0.85em;
+            color: var(--rank-name-color);
+            margin-top: 2px;
+        }
+        .score {
+            /* Darker, bolder, and larger for better visibility */
+            color: var(--title-color);
+            font-weight: 700;
+            font-size: 1.2em; /* 점수 크기 증가 */
+            margin-left: auto;
+            padding-left: 10px;
+        }
+        .team-link {
+            margin-left: 10px;
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: bold;
+            transition: color 0.2s ease;
+        }
+        .team-link:hover {
+            color: var(--link-hover-color);
+        }
+        /* 올림픽 시상대 스타일 */
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 5px;
+            margin-bottom: 0; /* 간격 축소 */
+            min-height: 200px; /* 시상대 높이 증가 */
+        }
+        .podium-item {
+            flex: 1; max-width: 30%;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            text-align: center; text-decoration: none; color: var(--name-color);
+            position: relative; /* 화살표 위치의 기준점 */
+            transition: transform 0.5s cubic-bezier(0.55, 0, 0.1, 1); /* 애니메이션 추가 */
+        }
+        .podium-player { /* 아이콘과 반 이름 (선수) */
+            margin-bottom: -1px; /* 반 이름을 더 위로 올립니다 */
+            z-index: 1; /* 시상대 블록 위에 표시되도록 */
+        }
+        .podium-block { /* 순위와 점수 (시상대 블록) */
+            border-radius: 10px 10px 0 0;
+            padding: 15px 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center; /* 아이콘과 텍스트를 중앙 정렬 */
+        }
+        .podium-item-1 { order: 2; } .podium-item-1 .podium-block { height: 110px; background-color: var(--rank1-bg); border: 2px solid var(--rank1-border); }
+        .podium-item-2 { order: 1; } .podium-item-2 .podium-block { height: 90px; background-color: var(--rank2-bg); border: 1px solid var(--rank2-border); }
+        .podium-item-3 { order: 3; } .podium-item-3 .podium-block { height: 70px; background-color: var(--rank3-bg); border: 1px solid var(--rank3-border); }
+        
+        .podium-icon { font-size: 1.8em; line-height: 1; opacity: 0.8; }
+        .podium-name { font-weight: 800; font-size: 1.8em; display: block; } /* 반 이름 크기 증가 */
+        .podium-rank { font-size: 1.5em; font-weight: 800; display: block; }
+        .podium-score { font-size: 0.9em; color: var(--text-color); margin-top: 5px; }
+
+        /* Top 3 styling with classes and Nature Icons */
+        .rank-1 {
+            background-color: var(--rank1-bg);
+            border-color: var(--rank1-border);
+            border-width: 2px;
+            animation: highlight-glow 2.5s infinite ease-in-out;
+            overflow: visible; /* Ensure crown is not clipped */
+        }
+        .rank-1 { padding: 15px 20px; } /* padding 조정 */
+        .rank-1 .name { font-size: 1.1em; }
+        .rank-1::before { content: '🌳'; font-size: 1.5em; margin-right: 10px; }
+        .rank-2 { background-color: var(--rank2-bg); border-color: var(--rank2-border); padding: 18px 15px; }
+        .rank-2 .name { font-size: 1.05em; }
+        .rank-2::before { content: '🌲'; font-size: 1.4em; margin-right: 10px; }
+        .rank-3 { background-color: var(--rank3-bg); border-color: var(--rank3-border); padding: 14px 15px; } /* 3등 아이콘 수정 */
+        .rank-3::before { content: '🌿'; font-size: 1.3em; margin-right: 10px; }
+
+        /* Lower rank icons */
+        .rank-4 { opacity: 0.95; padding: 12px 15px; }
+        .rank-4::before { content: '🌱'; font-size: 1.3em; margin-right: 12px; }
+        .rank-5 {
+            opacity: 0.9; padding: 11px 15px;
+        }
+        .rank-5::before { content: '🌰'; font-size: 1.3em; margin-right: 12px; }
+        .rank-6 {
+            opacity: 0.85; padding: 10px 15px;
+        }
+        .rank-6::before { content: '🍂'; font-size: 1.2em; margin-right: 12px; }
+
+
+        /* Style for highlighting the current user's rank */
+        .my-rank {
+            border-color: var(--my-rank-border) !important; /* 다른 스타일을 덮어쓰기 위해 !important 사용 */
+            border-width: 2px;
+            box-shadow: 0 0 12px var(--my-rank-shadow);
+        }
+
+        @keyframes highlight-glow {
+            0% {
+                box-shadow: 0 2px 8px rgba(124, 179, 66, 0.3);
+            }
+            50% {
+                box-shadow: 0 4px 16px rgba(124, 179, 66, 0.5);
+            }
+            100% {
+                box-shadow: 0 2px 8px rgba(124, 179, 66, 0.3);
+            }
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 480px) {
+            .ranking-board {
+                padding: 20px 15px; /* Reduce horizontal padding */
+            }
+
+            h1 {
+                font-size: 1.6em; /* Slightly smaller title */
+            }
+
+            li {
+                padding: 10px 12px; /* More compact list items */
+            }
+        }
+
+        /* 설정 버튼 스타일 */
+        .settings-btn {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            background: none;
+            background-color: var(--title-color);
+            color: var(--board-bg);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            z-index: 1001;
+            transition: opacity 0.2s ease;
+        }
+        .settings-btn:hover {
+            opacity: 0.9;
+        }
+        /* 설정 패널 스타일 */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -300px; /* 화면 오른쪽에 숨김 */
+            width: 280px;
+            height: 100%;
+            background-color: #fff;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+            z-index: 1002;
+            transition: right 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        .settings-panel.open {
+            right: 0; /* 패널 보이기 */
+        }
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .settings-header h2 { margin: 0; font-size: 1.3em; color: var(--title-color); }
+        .close-btn { background: none; border: none; font-size: 2em; cursor: pointer; color: #999; }
+        .settings-content { padding: 20px; }
+        .settings-scroll-container {
+            flex-grow: 1; /* 헤더를 제외한 나머지 공간을 모두 차지 */
+            overflow-y: auto; /* 내용이 넘칠 경우 세로 스크롤 생성 */
+            padding-bottom: 20px; /* 스크롤 시 하단 여백 확보 */
+        }
+
+        .setting-item { margin-bottom: 20px; }
+        .setting-item label { display: block; font-weight: 600; color: var(--name-color); margin-bottom: 8px; }
+        .setting-item select, .setting-item input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        /* 오버레이 스타일 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 다크 모드 설정 패널 스타일 */
+        body[data-theme="dark"] .settings-panel {
+            background-color: #2c3e50;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.4);
+        }
+        body[data-theme="dark"] .settings-header {
+            border-bottom-color: #34495e;
+        }
+        body[data-theme="dark"] .close-btn { color: #bdc3c7; }
+        body[data-theme="dark"] .setting-item select,
+        body[data-theme="dark"] .setting-item input {
+            background-color: #34495e;
+            border-color: #4a637b;
+            color: #ecf0f1;
+        }
+
+        /* 아코디언 메뉴 스타일 */
+        .accordion-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .accordion-header {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--name-color);
+            cursor: pointer;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        }
+        .class-link-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .class-link-grid a {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 5px;
+            color: var(--title-color);
+            background-color: var(--border-color);
+            text-decoration: none;
+            font-weight: 800; /* 굵게 */
+            font-size: 1.5em; /* 크게 */
+            border-radius: 8px;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .class-link-grid a:hover {
+            transform: scale(1.05);
+            background-color: var(--rank-number-color);
+            color: var(--board-bg);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        YDP 에너지 절약 대회
+    </header>
+
+    <button class="settings-btn" id="settings-btn" aria-label="더보기 열기">더보기</button>
+
+    <div class="overlay" id="overlay"></div>
+
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-header">
+            <h2>더보기</h2>
+            <button class="close-btn" id="close-settings-btn" aria-label="더보기 닫기">&times;</button>
+        </div>
+        <div class="settings-scroll-container">
+            <div class="accordion-item">
+                <button class="accordion-header">설정</button>
+                <div class="accordion-content">
+                    <div class="settings-content">
+                        <div class="setting-item">
+                            <label for="theme-select">테마 선택</label>
+                            <select id="theme-select">
+                                <option value="light">라이트 모드</option>
+                                <option value="dark">다크 모드</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="my-class-input">내 반 강조하기</label>
+                            <select id="my-class-select"></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <button class="accordion-header">반별 페이지</button>
+                <div class="accordion-content">
+                    <div class="settings-content" id="class-links-content">
+                        <!-- JS로 링크 생성 -->
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+            <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
+            </div>
+            <div class="accordion-item">
+                <button id="reset-settings-btn" class="accordion-header" style="color: #c62828;">설정 초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="ranking-board">
+        <h1>전기세 랭킹</h1>
+        <div id="podium-container" class="podium-container"></div>
+        <ol id="ranking-list"></ol>
+    </div>
+
+    <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
+    <script>
+        // 1. realtimedata에서 불러온 monthlyRanking을 점수(monthlyUsageIndex) 기준으로 오름차순 정렬 (점수가 낮을수록 순위가 높음)
+        const rankingData = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+        
+        // 2. 점수 차이에 따른 색상 자동 계산 함수
+        function getDiffStyle(difference) {
+            if (difference <= 0) return '';
+
+            // 점수 차이 범위를 0 ~ 300점으로 가정. 300점 이상은 모두 가장 붉은색.
+            const maxDiff = 300;
+            const normalizedDiff = Math.min(difference, maxDiff) / maxDiff; // 0 ~ 1 사이 값으로 정규화
+
+            // Hue(색상): 60(노랑) ~ 0(빨강) 사이를 매핑
+            const hue = 60 - (normalizedDiff * 60);
+            const saturation = 95;
+            const lightness = 55;
+
+            // 글씨 색상을 흰색으로 통일
+            return `style="--diff-bg-color: hsl(${hue}, ${saturation}%, ${lightness}%); --diff-text-color: white;"`;
+        }
+
+        // 3. 랭킹 목록 동적 생성
+        function renderRanking() {
+            const podiumContainer = document.getElementById('podium-container');
+            const listElement = document.getElementById('ranking-list');
+            if (!podiumContainer || !listElement) return;
+
+            // 상위 3개 팀 (시상대)
+            const top3 = rankingData.slice(0, 3);
+            let podiumHTML = '';
+            top3.forEach((team, index) => {
+                const rank = index + 1;
+                const currentScore = team.monthlyUsageIndex;
+                const prevScore = (index > 0) ? rankingData[index - 1].monthlyUsageIndex : '';
+                const nextScore = (index < rankingData.length - 1) ? rankingData[index + 1].monthlyUsageIndex : '';
+
+                let icon = '';
+                if (rank === 1) icon = '🌳';
+                else if (rank === 2) icon = '🌲';
+                else if (rank === 3) icon = '🌿';
+
+                podiumHTML += `
+                    <a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}" class="podium-item podium-item-${rank}">
+                        <div class="podium-player">
+                            <span class="podium-name">${team.className}</span>
+                        </div>
+                        <div class="podium-block">
+                            <span class="podium-icon">${icon}</span>
+                            <span class="podium-rank">${rank}위</span>
+                            <span class="podium-score">${team.monthlyUsageIndex}점</span>
+                        </div>
+                    </a>
+                `;
+            });
+            podiumContainer.innerHTML = podiumHTML;
+
+            // 4위 이하 팀 (리스트)
+            const lowerRanks = rankingData.slice(3);
+            let listHTML = '';
+            lowerRanks.forEach((team, index) => {
+                const rank = index + 4; // 4위부터 시작
+                const originalIndex = index + 3; // 전체 데이터에서의 인덱스
+                const currentScore = team.monthlyUsageIndex;
+                const prevScore = (originalIndex > 0) ? rankingData[originalIndex - 1].monthlyUsageIndex : '';
+                const nextScore = (originalIndex < rankingData.length - 1) ? rankingData[originalIndex + 1].monthlyUsageIndex : '';
+
+                listHTML += `
+                    <li class="rank-${rank}" data-href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}">
+                        <div class="name-rank-wrapper">
+                            <span class="name">${team.className}</span>
+                            <span class="rank-name">${team.classId}</span>
+                        </div>
+                        <span class="score">${team.monthlyUsageIndex}점</span>
+                        <a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}" class="team-link" title="${team.className} 정보 보기" aria-label="${team.className} 반 정보 보기">›</a>
+                    </li>
+                `;
+            });
+            listElement.innerHTML = listHTML;
+        }
+        
+        // 순위 변경 애니메이션 함수 (FLIP 기법)
+        function animateRankingUpdate() {
+            // 1. 이전 위치 측정
+            const oldRanks = {};
+            rankingData.forEach((team, index) => { // Use the current rankingData
+                oldRanks[team.className] = index + 1;
+            });
+
+            const oldPositions = {};
+            const rankingItems = document.querySelectorAll('.podium-item, #ranking-list li');
+            rankingItems.forEach(el => {
+                const nameEl = el.querySelector('.podium-name') || el.querySelector('.name');
+                if (nameEl) {
+                    const teamName = nameEl.textContent; // Use className for identification
+                    oldPositions[teamName] = el.getBoundingClientRect();
+                }
+            });
+
+            // 2. 데이터 업데이트 및 재정렬
+            rankingData.forEach(team => {
+                // 점수를 랜덤하게 변경하여 순위 변동 시뮬레이션 (monthlyUsageIndex는 낮을수록 좋으므로, 감소시켜야 순위가 오름)
+                // 50점 감소 ~ 50점 증가 범위로 변경
+                team.monthlyUsageIndex += Math.floor(Math.random() * 101) - 50;
+            });
+            rankingData.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex); // Sort by monthlyUsageIndex ascending
+
+            // 3. DOM 업데이트 (리렌더링)
+            renderRanking();
+            // '내 학급' 하이라이트 다시 적용
+            const myClassInput = document.getElementById('my-class-input');
+            if (myClassInput && myClassInput.value) {
+                highlightMyRank(myClassInput.value);
+            }
+
+            // 4. 새로운 위치 측정 및 애니메이션 적용
+            const newRankingItems = document.querySelectorAll('.podium-item, #ranking-list li');
+            newRankingItems.forEach(el => {
+                const nameEl = el.querySelector('.podium-name') || el.querySelector('.name');
+                if (!nameEl) return;
+
+                const teamName = nameEl.textContent;
+                const oldPos = oldPositions[teamName];
+                const newPos = el.getBoundingClientRect();
+
+                if (oldPos) {
+                    // 이전 위치와 현재 위치의 차이 계산
+                    const deltaX = oldPos.left - newPos.left;
+                    const deltaY = oldPos.top - newPos.top;
+
+                    // 순위 변동 확인 및 화살표 표시
+                    const newRank = rankingData.findIndex(t => t.className === teamName) + 1;
+                    const oldRank = oldRanks[teamName];
+
+                    if (newRank !== oldRank) {
+                        const indicator = document.createElement('span');
+                        indicator.className = 'rank-change-indicator';
+                        if (newRank < oldRank) {
+                            indicator.classList.add('up');
+                            indicator.textContent = '▲';
+                        } else {
+                            indicator.classList.add('down');
+                            indicator.textContent = '▼';
+                        }
+                        el.appendChild(indicator);
+                        // 애니메이션이 끝나면 요소 제거
+                        indicator.addEventListener('animationend', () => indicator.remove());
+                    }
+
+                    // 위치 변화가 있을 경우에만 애니메이션 적용
+                    if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+                        // INVERT: 이전 위치로 순간이동
+                        el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                        el.style.transition = 'transform 0s';
+
+                        // PLAY: 다음 프레임에서 원래 위치로 돌아오는 애니메이션 실행
+                        requestAnimationFrame(() => {
+                            el.classList.add('ranking-item-move');
+                            el.style.transform = '';
+                        });
+                    }
+                }
+
+                // 애니메이션이 끝나면 transition 속성 제거
+                el.addEventListener('transitionend', () => {
+                    el.classList.remove('ranking-item-move');
+                    el.style.transition = '';
+                }, { once: true });
+            });
+        }
+
+        // 페이지 로드 시 랭킹 렌더링 실행
+        document.addEventListener('DOMContentLoaded', () => {
+            renderRanking();
+
+            // 설정 패널 관련 스크립트
+            const settingsBtn = document.getElementById('settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings-btn');
+            const settingsPanel = document.getElementById('settings-panel');
+            const overlay = document.getElementById('overlay');
+
+            // 테마 설정 관련 스크립트
+            const themeSelect = document.getElementById('theme-select');
+
+            const applyTheme = (theme) => {
+                document.body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeSelect.value = theme;
+            };
+
+            themeSelect.addEventListener('change', (e) => {
+                applyTheme(e.target.value);
+            });
+
+            // 페이지 로드 시 저장된 테마 적용
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+
+            // '내 학급' 설정 관련 스크립트
+            const myClassSelect = document.getElementById('my-class-select');
+
+            // 하이라이트 적용 함수
+            const highlightMyRank = (myClassInputVal) => {
+                const normalizedMyClass = myClassInputVal.trim();
+                
+                // 모든 순위 아이템에서 하이라이트 제거
+                document.querySelectorAll('.podium-item, #ranking-list li').forEach(item => {
+                    item.classList.remove('my-rank');
+                });
+
+                if (!normalizedMyClass) return; // 입력값이 없으면 종료
+
+                // 시상대 아이템 검색 및 하이라이트
+                document.querySelectorAll('.podium-item').forEach(item => {
+                    const teamNameElement = item.querySelector('.podium-name');
+                    if (teamNameElement && teamNameElement.textContent === normalizedMyClass) {
+                        item.classList.add('my-rank');
+                    }
+                });
+
+                // 랭킹 목록 아이템 검색 및 하이라이트
+                document.querySelectorAll('#ranking-list li').forEach(item => {
+                    const teamNameElement = item.querySelector('.name');
+                    if (teamNameElement && teamNameElement.textContent === normalizedMyClass) {
+                        item.classList.add('my-rank');
+                    }
+                });
+            };
+
+            // 드롭다운 메뉴에 반 목록 추가
+            myClassSelect.innerHTML = '<option value="">반 선택</option>'; // 기본 옵션
+            realtimedata.mainPage.monthlyRanking.forEach(team => {
+                myClassSelect.innerHTML += `<option value="${team.className}">${team.className}</option>`;
+            });
+
+            // 변경 시 실시간으로 하이라이트 적용 및 저장
+            myClassSelect.addEventListener('change', (e) => {
+                const myClass = e.target.value;
+                localStorage.setItem('myClass', myClass); // localStorage에 저장
+                highlightMyRank(myClass);
+            });
+
+            const toggleSettingsPanel = () => {
+                settingsPanel.classList.toggle('open');
+                overlay.classList.toggle('active');
+            };
+
+            settingsBtn.addEventListener('click', toggleSettingsPanel);
+            closeSettingsBtn.addEventListener('click', toggleSettingsPanel);
+            overlay.addEventListener('click', toggleSettingsPanel);
+
+            // 아코디언 메뉴 스크립트
+            document.querySelectorAll('.accordion-header').forEach(button => {
+                // <button> 요소가 아닌 경우(예: <a> 태그)에는 아코디언 기능을 추가하지 않음
+                if (button.tagName !== 'BUTTON') return;
+
+                button.addEventListener('click', () => {
+                    const content = button.nextElementSibling;
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            });
+
+            // 페이지 로드 시 저장된 '내 학급' 정보 불러오기 및 하이라이트 적용
+            const savedMyClass = localStorage.getItem('myClass');
+            if (savedMyClass) {
+                myClassSelect.value = savedMyClass;
+                highlightMyRank(savedMyClass);
+            }
+
+            // 반별 페이지 링크 생성
+            const classLinksContent = document.getElementById('class-links-content');
+            const rankingDataForLinks = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+            if (classLinksContent) {
+                const grid = document.createElement('div');
+                grid.className = 'class-link-grid';
+                rankingDataForLinks.forEach((team, index) => {
+                    const rank = index + 1;
+                    const prevScore = (index > 0) ? rankingDataForLinks[index - 1].monthlyUsageIndex : '';
+                    const nextScore = (index < rankingDataForLinks.length - 1) ? rankingDataForLinks[index + 1].monthlyUsageIndex : '';
+                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${team.monthlyUsageIndex}&prevScore=${prevScore}&nextScore=${nextScore}">${team.className}</a>`;
+                });
+                classLinksContent.appendChild(grid);
+            }
+
+            // 이벤트 위임: 랭킹 목록 클릭 처리
+            const rankingListEl = document.getElementById('ranking-list');
+            if (rankingListEl) {
+                rankingListEl.addEventListener('click', (e) => {
+                    const targetLi = e.target.closest('li');
+                    if (targetLi && targetLi.dataset.href) {
+                        window.location.href = targetLi.dataset.href;
+                    }
+                });
+            }
+
+            // 설정 초기화 버튼
+            const resetBtn = document.getElementById('reset-settings-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (confirm('테마와 내 반 강조 설정을 모두 초기화하시겠습니까?')) {
+                        localStorage.removeItem('theme');
+                        localStorage.removeItem('myClass');
+                        window.location.reload();
+                    }
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
