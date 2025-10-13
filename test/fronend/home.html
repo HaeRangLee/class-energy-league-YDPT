@@ -71,6 +71,7 @@
             flex-direction: column; /* Stack children vertically */
             flex: 1; /* Allow this to grow and fill available space */
             background-color: var(--board-bg);
+            position: relative; /* 증감률 표시기의 위치 기준점 */
             border-radius: 16px;
             box-shadow: 0 8px 25px var(--shadow-color);
             width: 90%;
@@ -127,7 +128,7 @@
             align-items: center;
             border: 1px solid var(--border-color);
             counter-increment: ranking-counter;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
             position: relative;
             cursor: pointer;
         }
@@ -162,6 +163,7 @@
         li:hover {
             transform: translateY(-3px); /* Simplified hover effect */
             box-shadow: 0 4px 12px rgba(46, 81, 46, 0.12);
+            background-color: var(--border-color);
         }
         li::before {
             content: counter(ranking-counter);
@@ -278,8 +280,20 @@
         /* Style for highlighting the current user's rank */
         .my-rank {
             border-color: var(--my-rank-border) !important; /* 다른 스타일을 덮어쓰기 위해 !important 사용 */
-            border-width: 2px;
-            box-shadow: 0 0 12px var(--my-rank-shadow);
+            border-width: 3px; /* 테두리를 더 두껍게 */
+            animation: my-rank-pulse 2s infinite; /* 반짝이는 애니메이션 적용 */
+        }
+
+        @keyframes my-rank-pulse {
+            0% {
+                box-shadow: 0 0 12px var(--my-rank-shadow);
+            }
+            50% {
+                box-shadow: 0 0 25px 5px var(--my-rank-shadow); /* 그림자를 더 밝고 넓게 */
+            }
+            100% {
+                box-shadow: 0 0 12px var(--my-rank-shadow);
+            }
         }
 
         @keyframes highlight-glow {
@@ -339,7 +353,7 @@
             background-color: #fff;
             box-shadow: -4px 0 15px rgba(0,0,0,0.1);
             z-index: 1002;
-            transition: right 0.3s ease-in-out;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex;
             flex-direction: column;
         }
@@ -452,6 +466,126 @@
     </style>
 </head>
 <body>
+    <style>
+        .indicators-wrapper {
+            position: absolute;
+            left: 100%; /* 랭킹 보드 바로 오른쪽으로 이동 */
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 5;
+            margin-left: 20px; /* 오른쪽으로 약간의 여백 추가 */
+        }
+        .side-indicator {
+            transform: translateY(-50%) scale(0.9);
+            background-color: var(--board-bg);
+            color: var(--name-color);
+            padding: 15px 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+            width: 110px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease, background-color 0.3s;
+            position: relative; /* top, left 속성 제거 */
+            transform: scale(0.9);
+        }
+        .side-indicator.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .my-class-indicator {
+            border-left: 4px solid var(--my-rank-border);
+        }
+        .indicator-label { font-size: 0.85em; color: var(--text-color); }
+        .indicator-value { font-size: 2em; font-weight: 800; line-height: 1.2; }
+        .indicator-value.increase { color: #d32f2f; } /* Red */
+        .indicator-value.decrease { color: #1976d2; } /* Blue */
+        body[data-theme="dark"] .indicator-value.increase { color: #ff8a80; } /* Light Red */
+        body[data-theme="dark"] .indicator-value.decrease { color: #90caf9; } /* Light Blue */
+
+        @media (max-width: 900px) {
+            .indicators-wrapper {
+                position: static;
+                flex-direction: row;
+                margin-bottom: 20px;
+            }
+            .side-indicator {
+                opacity: 1;
+                flex: 1;
+            }
+            .side-indicator .indicator-value { font-size: 1.5em; }
+            .side-indicator .indicator-label { font-size: 0.8em; }
+        }
+    </style>
+
+    <!-- 튜토리얼 오버레이 -->
+    <div id="tutorial-overlay" style="display: none;">
+        <div id="tutorial-step-1" class="tutorial-step">
+            <div class="tutorial-box" style="top: 65px; right: 20px;">
+                <h3>환영합니다! 👋</h3>
+                <p>먼저 '내 반'을 설정하여<br>우리 반 순위를 쉽게 확인하세요.</p>
+                <p>오른쪽 위 '더보기' 버튼을 눌러주세요.</p>
+            </div>
+        </div>
+        <div id="tutorial-step-2" class="tutorial-step" style="display: none;">
+            <div class="tutorial-box">
+                <h3>좋아요!</h3>
+                <p>이제 '설정' 메뉴를 눌러<br>테마와 반을 선택하세요.</p>
+            </div>
+        </div>
+        <div id="tutorial-step-3" class="tutorial-step" style="display: none;">
+            <div class="tutorial-box">
+                <h3>잘하셨어요!</h3>
+                <p>마지막으로 '내 반 정하기'에서<br>자신의 반을 선택해주세요!</p>
+            </div>
+        </div>
+    </div>
+    <style>
+        .tutorial-highlight {
+            z-index: 2001;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+        }
+        #tutorial-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2000;
+            pointer-events: none; /* 아래 요소 클릭을 막지 않음 */
+        }
+        .tutorial-box {
+            position: absolute;
+            background-color: var(--board-bg);
+            color: var(--name-color);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            text-align: center;
+            pointer-events: all; /* 박스 내부는 클릭 가능 */
+            z-index: 2002; /* 하이라이트 그림자(z-index: 2001) 위에 표시 */
+            animation: tutorial-pulse 2s infinite;
+        }
+
+        @keyframes tutorial-pulse {
+            0% {
+                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            }
+            50% {
+                box-shadow: 0 8px 30px 5px rgba(0,0,0,0.4);
+            }
+            100% {
+                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            }
+        }
+    </style>
 
     <header class="site-header">
         YDP 에너지 절약 대회
@@ -474,12 +608,13 @@
                         <div class="setting-item">
                             <label for="theme-select">테마 선택</label>
                             <select id="theme-select">
+                                <option value="auto">자동</option>
                                 <option value="light">라이트 모드</option>
                                 <option value="dark">다크 모드</option>
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label for="my-class-input">내 반 강조하기</label>
+                            <label for="my-class-select">내 반 정하기</label>
                             <select id="my-class-select"></select>
                         </div>
                     </div>
@@ -497,21 +632,43 @@
             <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
             </div>
             <div class="accordion-item">
-                <button id="reset-settings-btn" class="accordion-header" style="color: #c62828;">설정 초기화</button>
+                <button id="refresh-ranking-btn" class="accordion-header refresh-btn">랭킹 새로고침</button>
+            </div>
+            <div class="accordion-item">
+                <button id="restart-tutorial-btn" class="accordion-header">튜토리얼 다시보기</button>
+            </div>
+            <div class="accordion-item">
+                <a href="credits.html" class="accordion-header" style="display:block; text-decoration: none;">개발자 노트</a>
             </div>
         </div>
     </div>
 
-    <div class="ranking-board">
-        <h1>전기세 랭킹</h1>
-        <div id="podium-container" class="podium-container"></div>
-        <ol id="ranking-list"></ol>
-    </div>
+    <main class="main-container" style="position: relative; display: flex; justify-content: center; align-items: flex-start; width: 100%;">
+        <div class="ranking-board">
+            <h1>에어컨 사용량 랭킹</h1>
+            <div class="indicators-wrapper">
+                <div class="side-indicator my-class-indicator" id="my-class-indicator" style="display:none"></div>
+                <div class="side-indicator" id="right-indicator"></div>
+            </div>
+            <div id="podium-container" class="podium-container"></div>
+            <ol id="ranking-list"></ol>
+        </div>
+    </main>
 
+
+
+    <style>
+        .refresh-btn { color: var(--link-hover-color); }
+    </style>
+
+    <script src="common.js"></script> <!-- 공통 스크립트 파일 불러오기 -->
     <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
     <script>
-        // 1. realtimedata에서 불러온 monthlyRanking을 점수(monthlyUsageIndex) 기준으로 오름차순 정렬 (점수가 낮을수록 순위가 높음)
-        const rankingData = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+        // 전역 변수로 랭킹 데이터와 Firebase DB 참조 저장
+        let rankingData = [];
+
+        // 1. 점수(monthlyUsageIndex) 기준으로 오름차순 정렬 (점수가 낮을수록 순위가 높음)
+        const sortRanking = (data) => [...data].sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
         
         // 2. 점수 차이에 따른 색상 자동 계산 함수
         function getDiffStyle(difference) {
@@ -590,7 +747,7 @@
         }
         
         // 순위 변경 애니메이션 함수 (FLIP 기법)
-        function animateRankingUpdate() {
+        function animateRankingUpdate(newRankingData) {
             // 1. 이전 위치 측정
             const oldRanks = {};
             rankingData.forEach((team, index) => { // Use the current rankingData
@@ -608,19 +765,14 @@
             });
 
             // 2. 데이터 업데이트 및 재정렬
-            rankingData.forEach(team => {
-                // 점수를 랜덤하게 변경하여 순위 변동 시뮬레이션 (monthlyUsageIndex는 낮을수록 좋으므로, 감소시켜야 순위가 오름)
-                // 50점 감소 ~ 50점 증가 범위로 변경
-                team.monthlyUsageIndex += Math.floor(Math.random() * 101) - 50;
-            });
-            rankingData.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex); // Sort by monthlyUsageIndex ascending
+            rankingData = newRankingData; // Update global ranking data
 
             // 3. DOM 업데이트 (리렌더링)
             renderRanking();
             // '내 학급' 하이라이트 다시 적용
-            const myClassInput = document.getElementById('my-class-input');
-            if (myClassInput && myClassInput.value) {
-                highlightMyRank(myClassInput.value);
+            const myClassSelect = document.getElementById('my-class-select');
+            if (myClassSelect && myClassSelect.value) {
+                highlightMyRank(myClassSelect.value);
             }
 
             // 4. 새로운 위치 측정 및 애니메이션 적용
@@ -647,10 +799,10 @@
                         indicator.className = 'rank-change-indicator';
                         if (newRank < oldRank) {
                             indicator.classList.add('up');
-                            indicator.textContent = '▲';
+                            indicator.textContent = '🔺';
                         } else {
                             indicator.classList.add('down');
-                            indicator.textContent = '▼';
+                            indicator.textContent = '🔻';
                         }
                         el.appendChild(indicator);
                         // 애니메이션이 끝나면 요소 제거
@@ -679,145 +831,200 @@
             });
         }
 
-        // 페이지 로드 시 랭킹 렌더링 실행
-        document.addEventListener('DOMContentLoaded', () => {
-            renderRanking();
-
-            // 설정 패널 관련 스크립트
-            const settingsBtn = document.getElementById('settings-btn');
-            const closeSettingsBtn = document.getElementById('close-settings-btn');
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DOM 요소 가져오기 ---
             const settingsPanel = document.getElementById('settings-panel');
             const overlay = document.getElementById('overlay');
-
-            // 테마 설정 관련 스크립트
+            const settingsBtn = document.getElementById('settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings-btn');
             const themeSelect = document.getElementById('theme-select');
+            const myClassSelect = document.getElementById('my-class-select');
+            const tutorialOverlay = document.getElementById('tutorial-overlay');
+            const tutorialSteps = {
+                step1: document.getElementById('tutorial-step-1'),
+                step2: document.getElementById('tutorial-step-2'),
+                step3: document.getElementById('tutorial-step-3')
+            };
+            const settingsAccordionBtn = document.querySelector('.accordion-header'); // '설정' 버튼
 
-            const applyTheme = (theme) => {
-                document.body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
+            // --- 함수 정의 ---
+
+            // 테마 적용
+            const applyTheme = (theme, saveCookie = true) => {
+                let effectiveTheme = theme === 'auto' 
+                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') 
+                    : theme;
+                document.body.setAttribute('data-theme', effectiveTheme);
+                if (saveCookie) setCookie('theme', theme, 365);
                 themeSelect.value = theme;
             };
 
-            themeSelect.addEventListener('change', (e) => {
-                applyTheme(e.target.value);
-            });
-
-            // 페이지 로드 시 저장된 테마 적용
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            applyTheme(savedTheme);
-
-            // '내 학급' 설정 관련 스크립트
-            const myClassSelect = document.getElementById('my-class-select');
-
-            // 하이라이트 적용 함수
-            const highlightMyRank = (myClassInputVal) => {
-                const normalizedMyClass = myClassInputVal.trim();
-                
-                // 모든 순위 아이템에서 하이라이트 제거
+            // 내 반 하이라이트
+            const highlightMyRank = (className) => {
                 document.querySelectorAll('.podium-item, #ranking-list li').forEach(item => {
                     item.classList.remove('my-rank');
-                });
-
-                if (!normalizedMyClass) return; // 입력값이 없으면 종료
-
-                // 시상대 아이템 검색 및 하이라이트
-                document.querySelectorAll('.podium-item').forEach(item => {
-                    const teamNameElement = item.querySelector('.podium-name');
-                    if (teamNameElement && teamNameElement.textContent === normalizedMyClass) {
-                        item.classList.add('my-rank');
-                    }
-                });
-
-                // 랭킹 목록 아이템 검색 및 하이라이트
-                document.querySelectorAll('#ranking-list li').forEach(item => {
-                    const teamNameElement = item.querySelector('.name');
-                    if (teamNameElement && teamNameElement.textContent === normalizedMyClass) {
+                    const teamNameEl = item.querySelector('.podium-name') || item.querySelector('.name');
+                    if (className && teamNameEl && teamNameEl.textContent === className) {
                         item.classList.add('my-rank');
                     }
                 });
             };
 
-            // 드롭다운 메뉴에 반 목록 추가
-            myClassSelect.innerHTML = '<option value="">반 선택</option>'; // 기본 옵션
-            realtimedata.mainPage.monthlyRanking.forEach(team => {
-                myClassSelect.innerHTML += `<option value="${team.className}">${team.className}</option>`;
-            });
-
-            // 변경 시 실시간으로 하이라이트 적용 및 저장
-            myClassSelect.addEventListener('change', (e) => {
-                const myClass = e.target.value;
-                localStorage.setItem('myClass', myClass); // localStorage에 저장
-                highlightMyRank(myClass);
-            });
-
+            // '더보기' 패널 토글
             const toggleSettingsPanel = () => {
                 settingsPanel.classList.toggle('open');
                 overlay.classList.toggle('active');
             };
 
+            // 내 반 증감률 표시기 업데이트
+            const updateMyClassIndicator = (className) => {
+                const indicator = document.getElementById('my-class-indicator');
+                if (!indicator) return;
+                if (!className) {
+                    indicator.style.display = 'none';
+                    return;
+                }
+                const classData = realtimedata.mainPage.monthlyRanking.find(c => c.className === className);
+                const detailData = classData ? realtimedata.detailPage[classData.classId] : null;
+                if (!detailData) {
+                    indicator.style.display = 'none';
+                    return;
+                }
+                const change = detailData.comparison.vsLastWeek;
+                const isIncrease = change > 0;
+                const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
+                const icon = isIncrease ? '🔺' : (change < 0 ? '' : '➖');
+                indicator.innerHTML = `
+                    <span class="indicator-label">${className}</span>
+                    <span class="indicator-value"><span class="${valueClass}">${icon}</span> <span class="${valueClass}">${Math.abs(change).toFixed(1)}%</span></span>
+                `;
+                indicator.style.display = 'flex';
+                setTimeout(() => indicator.classList.add('show'), 10);
+            };
+
+            // 전체 증감률 표시기 업데이트
+            const updateSideIndicators = () => {
+                const rightIndicator = document.getElementById('right-indicator');
+                if (!rightIndicator) return;
+                const change = realtimedata.mainPage.systemIndexChangeVsLastWeek;
+                const isIncrease = change > 0;
+                const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
+                const icon = isIncrease ? '🔺' : (change < 0 ? '' : '➖');
+                rightIndicator.innerHTML = `
+                    <span class="indicator-label">지난주 대비</span>
+                    <span class="indicator-value"><span class="${valueClass}">${icon}</span> <span class="${valueClass}">${Math.abs(change).toFixed(1)}%</span></span>
+                `;
+                setTimeout(() => rightIndicator.classList.add('show'), 10);
+            };
+
+            // 튜토리얼 종료
+            const finishTutorial = () => {
+                if (tutorialOverlay.style.display === 'block') {
+                    tutorialOverlay.style.display = 'none';
+                    document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+                }
+            };
+
+            // 튜토리얼 시작
+            const startTutorial = () => {
+                finishTutorial(); // 혹시 떠있는 튜토리얼이 있으면 초기화
+                tutorialOverlay.style.display = 'block';
+                tutorialSteps.step1.style.display = 'block';
+                tutorialSteps.step2.style.display = 'none';
+                tutorialSteps.step3.style.display = 'none';
+                settingsBtn.classList.add('tutorial-highlight');
+
+                const step2Handler = () => {
+                    settingsBtn.classList.remove('tutorial-highlight');
+                    tutorialSteps.step1.style.display = 'none';
+                    tutorialSteps.step2.style.display = 'block';
+                    settingsAccordionBtn.classList.add('tutorial-highlight');
+                    settingsBtn.removeEventListener('click', step2Handler);
+                };
+                settingsBtn.addEventListener('click', step2Handler);
+
+                const step3Handler = () => {
+                    settingsAccordionBtn.classList.remove('tutorial-highlight');
+                    tutorialSteps.step2.style.display = 'none';
+                    tutorialSteps.step3.style.display = 'block';
+                    myClassSelect.parentElement.classList.add('tutorial-highlight');
+                    settingsAccordionBtn.removeEventListener('click', step3Handler);
+                };
+                settingsAccordionBtn.addEventListener('click', step3Handler);
+            };
+
+            // --- 이벤트 리스너 설정 ---
             settingsBtn.addEventListener('click', toggleSettingsPanel);
             closeSettingsBtn.addEventListener('click', toggleSettingsPanel);
             overlay.addEventListener('click', toggleSettingsPanel);
-
-            // 아코디언 메뉴 스크립트
+            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+            myClassSelect.addEventListener('change', (e) => {
+                const myClass = e.target.value;
+                setCookie('myClass', myClass, 365);
+                highlightMyRank(myClass);
+                updateMyClassIndicator(myClass);
+                finishTutorial();
+            });
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if ((getCookie('theme') || 'auto') === 'auto') applyTheme('auto', false);
+            });
             document.querySelectorAll('.accordion-header').forEach(button => {
-                // <button> 요소가 아닌 경우(예: <a> 태그)에는 아코디언 기능을 추가하지 않음
-                if (button.tagName !== 'BUTTON') return;
-
-                button.addEventListener('click', () => {
-                    const content = button.nextElementSibling;
-                    if (content.style.maxHeight) {
-                        content.style.maxHeight = null;
-                    } else {
-                        content.style.maxHeight = content.scrollHeight + "px";
-                    }
-                });
+                if (button.tagName === 'BUTTON') {
+                    button.addEventListener('click', () => {
+                        const content = button.nextElementSibling;
+                        content.style.maxHeight = content.style.maxHeight ? null : content.scrollHeight + "px";
+                    });
+                }
+            });
+            document.getElementById('refresh-ranking-btn')?.addEventListener('click', () => {
+                const newSimulatedData = rankingData.map(team => ({...team, monthlyUsageIndex: Math.max(1000, team.monthlyUsageIndex + Math.floor(Math.random() * 101) - 50)})).sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+                animateRankingUpdate(newSimulatedData);
+                toggleSettingsPanel();
+            });
+            document.getElementById('restart-tutorial-btn')?.addEventListener('click', () => {
+                toggleSettingsPanel();
+                setTimeout(startTutorial, 400);
+            });
+            document.getElementById('ranking-list').addEventListener('click', (e) => {
+                const targetLi = e.target.closest('li');
+                if (targetLi && targetLi.dataset.href) window.location.href = targetLi.dataset.href;
             });
 
-            // 페이지 로드 시 저장된 '내 학급' 정보 불러오기 및 하이라이트 적용
-            const savedMyClass = localStorage.getItem('myClass');
+            // --- 페이지 초기화 실행 ---
+            // 테마 적용
+            const savedTheme = getCookie('theme') || 'auto';
+            applyTheme(savedTheme);
+
+            // 데이터 정렬 및 렌더링
+            rankingData = sortRanking(realtimedata.mainPage.monthlyRanking);
+            renderRanking();
+
+            // '반별 페이지' 링크 생성 함수
+            (() => {
+                const classLinksContent = document.getElementById('class-links-content');
+                if (!classLinksContent) return;
+                const grid = document.createElement('div');
+                grid.className = 'class-link-grid';
+                rankingData.forEach((team, index) => {
+                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${index + 1}">${team.className}</a>`;
+                });
+                classLinksContent.appendChild(grid);
+            })();
+
+            // 저장된 '내 반' 정보 적용
+            populateMyClassSelect(myClassSelect, realtimedata.mainPage.monthlyRanking);
+            const savedMyClass = getCookie('myClass');
             if (savedMyClass) {
                 myClassSelect.value = savedMyClass;
                 highlightMyRank(savedMyClass);
+                updateMyClassIndicator(savedMyClass); // 페이지 로드 시 내 반 증감률 업데이트
+            } else {
+                // 쿠키가 없으면 튜토리얼 시작
+                setTimeout(startTutorial, 500); // 페이지가 완전히 그려진 후 시작
             }
 
-            // 반별 페이지 링크 생성
-            const classLinksContent = document.getElementById('class-links-content');
-            const rankingDataForLinks = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
-            if (classLinksContent) {
-                const grid = document.createElement('div');
-                grid.className = 'class-link-grid';
-                rankingDataForLinks.forEach((team, index) => {
-                    const rank = index + 1;
-                    const prevScore = (index > 0) ? rankingDataForLinks[index - 1].monthlyUsageIndex : '';
-                    const nextScore = (index < rankingDataForLinks.length - 1) ? rankingDataForLinks[index + 1].monthlyUsageIndex : '';
-                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${team.monthlyUsageIndex}&prevScore=${prevScore}&nextScore=${nextScore}">${team.className}</a>`;
-                });
-                classLinksContent.appendChild(grid);
-            }
-
-            // 이벤트 위임: 랭킹 목록 클릭 처리
-            const rankingListEl = document.getElementById('ranking-list');
-            if (rankingListEl) {
-                rankingListEl.addEventListener('click', (e) => {
-                    const targetLi = e.target.closest('li');
-                    if (targetLi && targetLi.dataset.href) {
-                        window.location.href = targetLi.dataset.href;
-                    }
-                });
-            }
-
-            // 설정 초기화 버튼
-            const resetBtn = document.getElementById('reset-settings-btn');
-            if (resetBtn) {
-                resetBtn.addEventListener('click', () => {
-                    if (confirm('테마와 내 반 강조 설정을 모두 초기화하시겠습니까?')) {
-                        localStorage.removeItem('theme');
-                        localStorage.removeItem('myClass');
-                        window.location.reload();
-                    }
-                });
-            }
+            // 증감률 표시기 초기화
+            updateSideIndicators();
         });
     </script>
 

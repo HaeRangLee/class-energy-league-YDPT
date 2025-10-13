@@ -43,21 +43,20 @@
             background-color: var(--title-color);
             color: var(--board-bg);
             display: flex;
-            justify-content: center;
-            position: relative;
+            justify-content: center; 
+            position: fixed; /* 헤더를 화면 상단에 고정 */
+            top: 0;
+            left: 0;
             align-items: center;
             padding: 15px 0;
             font-size: 1.6em;
             font-weight: 700;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 10;
+            z-index: 10; /* 다른 요소들 위에 표시 */
         }
 
         .compare-card {
-            margin-top: 80px;
+            margin-top: 100px; /* 헤더와 겹치지 않도록 여백 추가 */
             background-color: var(--board-bg);
             border-radius: 20px;
             box-shadow: 0 8px 25px var(--shadow-color);
@@ -98,13 +97,18 @@
             padding: 8px 15px;
             border: 1px solid var(--border-color);
             border-radius: 20px;
-            cursor: pointer;
+            cursor: pointer; 
             transition: background-color 0.2s, color 0.2s;
+            color: var(--name-color);
         }
         .class-checkbox-container input:checked + label {
             background-color: var(--title-color);
             color: var(--board-bg);
             border-color: var(--title-color);
+            animation: pop 0.3s ease-out;
+        }
+        @keyframes pop {
+            50% { transform: scale(1.1); }
         }
         .class-checkbox-container input {
             display: none;
@@ -162,12 +166,10 @@
         }
 
         .charts-wrapper {
-            display: flex; /* 가로 정렬을 위해 flex로 변경 */
-            flex-direction: row;
-            overflow-x: auto; /* 내용이 넘칠 경우 가로 스크롤 생성 */
+            display: flex;
+            flex-direction: column; /* 세로로 나열 */
             gap: 30px; /* 차트 간 간격 */
             padding: 10px;
-            -webkit-overflow-scrolling: touch; /* 모바일에서 부드러운 스크롤 */
         }
 
         .chart-controls {
@@ -284,7 +286,7 @@
             background-color: #fff;
             box-shadow: -4px 0 15px rgba(0,0,0,0.1);
             z-index: 1002;
-            transition: right 0.3s ease-in-out;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex;
             flex-direction: column;
         }
@@ -391,12 +393,13 @@
                         <div class="setting-item">
                             <label for="theme-select">테마 선택</label>
                             <select id="theme-select">
+                                <option value="auto">자동</option>
                                 <option value="light">라이트 모드</option>
                                 <option value="dark">다크 모드</option>
                             </select>
                         </div>
                         <div class="setting-item">
-                            <label for="my-class-input">내 반 강조하기</label>
+                            <label for="my-class-select">내 반 정하기</label>
                             <select id="my-class-select"></select>
                         </div>
                     </div>
@@ -411,14 +414,18 @@
             <div class="accordion-item">
                 <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
             </div>
-            <div class="accordion-item">
-                <button id="reset-settings-btn" class="accordion-header" style="color: #c62828;">설정 초기화</button>
-            </div>
         </div>
     </div>
 
     <div class="compare-card">
         <h1>반별 비교</h1>
+
+        <div class="selection-area" style="flex-direction: column;">
+            <h4>비교할 반을 선택하세요</h4>
+            <div id="class-checkbox-container" class="class-checkbox-container">
+                <!-- JS로 체크박스 생성 -->
+            </div>
+        </div>
 
         <div class="comparison-grid" id="comparison-results">
             <!-- 비교 결과가 여기에 표시됩니다. -->
@@ -426,46 +433,33 @@
 
         <div class="charts-wrapper">
             <div class="chart-section">
-                <h3 id="daily-chart-title">일간 사용량 비교</h3>
+                <h3 id="daily-chart-title">일간 에어컨 사용량 비교</h3>
                 <div class="chart-container">
                     <canvas id="daily-chart"></canvas>
                 </div>
             </div>
             <div class="chart-section">
-                <h3 id="weekly-chart-title">주간 사용량 비교</h3>
+                <h3 id="weekly-chart-title">주간 에어컨 사용량 비교</h3>
                 <div class="chart-container">
                     <canvas id="weekly-chart"></canvas>
                 </div>
             </div>
             <div class="chart-section">
-                <h3 id="realtime-chart-title">실시간 사용량 비교</h3>
+                <h3 id="realtime-chart-title">실시간 에어컨 사용량 비교</h3>
                 <div class="chart-container">
                     <canvas id="realtime-chart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div class="selection-area" style="margin-top: 30px; flex-direction: column;">
-            <h4>비교할 반을 선택하세요</h4>
-            <div id="class-checkbox-container" class="class-checkbox-container">
-                <!-- JS로 체크박스 생성 -->
-            </div>
-        </div>
-
         <a href="home.html" class="back-link">랭킹으로 돌아가기</a>
     </div>
 
+    <script src="common.js"></script> <!-- 공통 스크립트 파일 불러오기 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 테마 적용
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.body.setAttribute('data-theme', savedTheme);
-            const chartFontColor = savedTheme === 'dark' ? '#ecf0f1' : '#555';
-            Chart.defaults.color = chartFontColor;
-            Chart.defaults.borderColor = savedTheme === 'dark' ? '#34495e' : '#dceddc';
-
             // '더보기' 패널 관련 로직
             const settingsBtn = document.getElementById('settings-btn');
             const closeSettingsBtn = document.getElementById('close-settings-btn');
@@ -479,33 +473,56 @@
                 overlay.classList.toggle('active');
             };
 
-            const applyTheme = (theme) => {
-                document.body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
+            const applyTheme = (theme, saveCookie = true) => {
+                let effectiveTheme = theme;
+                if (theme === 'auto') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    effectiveTheme = prefersDark ? 'dark' : 'light';
+                }
+                document.body.setAttribute('data-theme', effectiveTheme);
+
+                // 차트 색상 업데이트
+                const chartFontColor = effectiveTheme === 'dark' ? '#ecf0f1' : '#555';
+                Chart.defaults.color = chartFontColor;
+                Chart.defaults.borderColor = effectiveTheme === 'dark' ? '#34495e' : '#dceddc';
+
+                if (saveCookie) {
+                    setCookie('theme', theme, 365); // 쿠키에 저장
+                }
                 themeSelect.value = theme;
-                // 테마 변경 시 차트 다시 그리기
-                window.location.reload();
             };
 
-            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+            themeSelect.addEventListener('change', (e) => {
+                // 테마 변경 시 차트를 다시 그려야 하므로 페이지 새로고침
+                applyTheme(e.target.value);
+                window.location.reload();
+            });
             settingsBtn.addEventListener('click', toggleSettingsPanel);
             closeSettingsBtn.addEventListener('click', toggleSettingsPanel);
             overlay.addEventListener('click', toggleSettingsPanel);
 
             // 드롭다운 메뉴에 반 목록 추가
-            myClassSelect.innerHTML = '<option value="">반 선택</option>';
-            realtimedata.mainPage.monthlyRanking.forEach(team => {
-                myClassSelect.innerHTML += `<option value="${team.className}">${team.className}</option>`;
-            });
-
+            populateMyClassSelect(myClassSelect, realtimedata.mainPage.monthlyRanking);
             // '내 반 강조하기'는 이 페이지에 해당 기능이 없으므로 저장/로드만 구현
             myClassSelect.addEventListener('change', (e) => {
-                localStorage.setItem('myClass', e.target.value);
+                setCookie('myClass', e.target.value, 365); // 쿠키에 저장
             });
-            const savedMyClass = localStorage.getItem('myClass');
+            const savedMyClass = getCookie('myClass');
             if (savedMyClass) {
                 myClassSelect.value = savedMyClass;
             }
+
+            // 페이지 로드 시 저장된 테마 또는 OS 설정 적용
+            const savedTheme = getCookie('theme') || 'auto';
+            applyTheme(savedTheme);
+
+            // OS 테마 변경 실시간 감지
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                const currentThemeSetting = getCookie('theme') || 'auto';
+                if (currentThemeSetting === 'auto') {
+                    window.location.reload();
+                }
+            });
 
             // 아코디언 메뉴
             document.querySelectorAll('.accordion-header').forEach(button => {
@@ -521,25 +538,10 @@
                 }
             });
 
-            // --- 페이지 고유 로직 시작 ---
+            let localData = realtimedata; // 로컬 데이터 사용
+            let dailyChart, weeklyChart, realtimeChart; // 차트 인스턴스
             const checkboxContainer = document.getElementById('class-checkbox-container');
             const resultsContainer = document.getElementById('comparison-results');
-            
-            let dailyChart, weeklyChart, realtimeChart;
-            
-            // 체크박스 메뉴 채우기
-            const classList = realtimedata.mainPage.monthlyRanking; // Use monthlyRanking for class list
-            classList.forEach(team => {
-                const checkboxId = `chk-${team.classId}`;
-                checkboxContainer.innerHTML += `
-                    <div>
-                        <input type="checkbox" id="${checkboxId}" value="${team.classId}" class="class-checkbox">
-                        <label for="${checkboxId}">${team.className}</label>
-                    </div>
-                `;
-            });
-
-            const checkboxes = document.querySelectorAll('.class-checkbox');
 
             // 색상 팔레트
             const colorPalette = [
@@ -555,28 +557,24 @@
 
             // 비교 함수
             function updateComparison() {
-                const selectedClasses = Array.from(checkboxes)
+                // 함수 호출 시점에 체크박스 목록을 다시 가져옴
+                const selectedClasses = Array.from(document.querySelectorAll('.class-checkbox'))
                                             .filter(cb => cb.checked)
                                             .map(cb => cb.value);
 
-                // 선택된 반 이름 표시
-                resultsContainer.innerHTML = '';
-                selectedClasses.forEach(classId => {
-                    const classInfo = realtimedata.detailPage[classId];
-                    resultsContainer.innerHTML += `
-                        <div class="compare-column">
-                            <h2>🌳 ${classInfo.className}</h2>
-                        </div>
-                    `;
-                });
+                if (!localData) return;
 
                 if (selectedClasses.length < 1) {
                     resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
                     if (dailyChart) dailyChart.destroy();
                     if (weeklyChart) weeklyChart.destroy();
                     if (realtimeChart) realtimeChart.destroy();
+                    document.querySelector('.charts-wrapper').style.display = 'none'; // 차트 영역 숨기기
                     return;
                 }
+
+                // 차트 영역이 숨겨져 있었다면 다시 보이게 함
+                document.querySelector('.charts-wrapper').style.display = 'flex';
 
                 // 차트 생성/업데이트 함수
                 const createOrUpdateChart = (chartInstance, canvasId, periodKey, labelKey, valueKey) => {
@@ -586,7 +584,7 @@
                     let labels = []; // Labels will be dynamically generated from the first selected class
 
                     const datasets = selectedClasses.map((classId, index) => {
-                        const classTrend = realtimedata.detailPage[classId]?.trends[periodKey] || [];
+                        const classTrend = localData.detailPage[classId]?.trends[periodKey] || [];
                         if (index === 0) { // Use the first selected class to determine labels
                             labels = classTrend.map(d => d[labelKey]);
                         }
@@ -594,7 +592,7 @@
                         allData.push(dataValues);
                         return {
                             type: 'line',
-                            label: `${realtimedata.detailPage[classId].className} 사용량`,
+                            label: `${localData.detailPage[classId].className} 에어컨 사용량`,
                             data: dataValues,
                             borderColor: borderPalette[index % borderPalette.length],
                             backgroundColor: borderPalette[index % borderPalette.length],
@@ -606,7 +604,7 @@
                     });
 
                     // 평균 데이터셋 추가 (선택된 반이 2개 이상일 때)
-                    if (selectedClasses.length > 1) { // Only show average if more than one class is selected
+                    if (selectedClasses.length > 1) {
                         const averageData = labels.map((_, i) => {
                             const sum = allData.reduce((acc, data) => acc + (data[i] || 0), 0);
                             const count = allData.filter(data => data[i] !== undefined).length;
@@ -615,7 +613,7 @@
 
                         datasets.unshift({ // unshift를 사용해 배열 맨 앞에 추가 (배경으로 깔리도록)
                             type: 'bar', // 평균은 막대 그래프로 표시
-                            label: '평균 사용량',
+                            label: '평균 에어컨 사용량',
                             data: averageData,
                             backgroundColor: 'rgba(201, 203, 207, 0.4)', // 연한 회색
                             borderColor: 'rgba(201, 203, 207, 0.6)',
@@ -646,6 +644,30 @@
                 realtimeChart = createOrUpdateChart(realtimeChart, 'realtime-chart', 'todayRealtime', 'time', 'value');
             }
 
+            // --- 페이지 초기화 ---
+            // 체크박스 메뉴 채우기
+            const classList = [...localData.mainPage.monthlyRanking].sort((a, b) => a.className.localeCompare(b.className));
+            classList.forEach(team => {
+                const checkboxId = `chk-${team.classId}`;
+                checkboxContainer.innerHTML += `
+                    <div>
+                        <input type="checkbox" id="${checkboxId}" value="${team.classId}" class="class-checkbox">
+                        <label for="${checkboxId}">${team.className}</label>
+                    </div>
+                `;
+            });
+
+            // '반별 페이지' 링크 생성
+            const classLinksContent = document.getElementById('class-links-content');
+            if (classLinksContent) {
+                const grid = document.createElement('div');
+                grid.className = 'class-link-grid';
+                classList.forEach((team, index) => {
+                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}">${team.className}</a>`;
+                });
+                classLinksContent.appendChild(grid);
+            }
+
             // 이벤트 리스너 연결
             checkboxContainer.addEventListener('change', (e) => {
                 if (e.target.classList.contains('class-checkbox')) {
@@ -653,35 +675,40 @@
                 }
             });
 
-            // 설정 초기화 버튼
-            const resetBtn = document.getElementById('reset-settings-btn');
-            if (resetBtn) {
-                resetBtn.addEventListener('click', () => {
-                    if (confirm('테마와 내 반 강조 설정을 모두 초기화하시겠습니까?')) {
-                        localStorage.removeItem('theme');
-                        localStorage.removeItem('myClass');
-                        window.location.reload();
-                    }
-                });
+            // 페이지 로드 시 기본 데이터 표시
+            // 1. 쿠키에서 '내 반' 정보 가져오기
+            const savedMyClassFromCookie = getCookie('myClass');
+            let defaultClassId = null;
+
+            if (savedMyClassFromCookie) {
+                const myClassData = classList.find(c => c.className === savedMyClassFromCookie);
+                if (myClassData) {
+                    defaultClassId = myClassData.classId;
+                }
             }
 
-            // 초기 로드
-            const classLinksContent = document.getElementById('class-links-content');
-            const rankingDataForLinks = realtimedata.mainPage.monthlyRanking.sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
-            if (classLinksContent) {
-                const grid = document.createElement('div');
-                grid.className = 'class-link-grid';
-                rankingDataForLinks.forEach((team, index) => {
-                    const rank = index + 1;
-                    const prevScore = (index > 0) ? rankingDataForLinks[index - 1].monthlyUsageIndex : '';
-                    const nextScore = (index < rankingDataForLinks.length - 1) ? rankingDataForLinks[index + 1].monthlyUsageIndex : '';
-                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${team.monthlyUsageIndex}&prevScore=${prevScore}&nextScore=${nextScore}">${team.className}</a>`;
-                });
-                classLinksContent.appendChild(grid);
+            // 2. '내 반'이 없으면 1위 반을 기본값으로 설정
+            if (!defaultClassId) {
+                const sortedRanking = [...localData.mainPage.monthlyRanking].sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+                if (sortedRanking.length > 0) {
+                    defaultClassId = sortedRanking[0].classId;
+                }
+
+                // 기본 데이터가 없는 경우 초기 메시지 표시
+                if (!defaultClassId) {
+                    resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
+                }
+
             }
-            // 초기 로드 시에는 아무것도 선택되지 않았으므로 updateComparison()을 호출하지 않습니다.
-            // 사용자가 체크박스를 선택하면 호출됩니다.
-            resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
+
+            // 3. 기본으로 선택된 반의 체크박스를 활성화하고 차트 업데이트
+            if (defaultClassId) {
+                const defaultCheckbox = document.getElementById(`chk-${defaultClassId}`);
+                if (defaultCheckbox) {
+                    defaultCheckbox.checked = true;
+                    updateComparison(); // 차트와 정보 업데이트
+                }
+            }
         });
     </script>
 </body>

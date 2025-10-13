@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>개발자 노트 - YDP</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #e6edf3;
+            --title-color: #58a6ff;
+            --name-color: #c9d1d9;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .credits-wrapper {
+            width: 100%;
+            height: 100%;
+            perspective: 400px; /* 원근감 */
+        }
+
+        .credits-content {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) rotateX(20deg);
+            transform-origin: 50% 0;
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+            animation: credit-roll 40s linear infinite; /* 40초 동안 무한 반복 */
+        }
+
+        @keyframes credit-roll {
+            0% {
+                top: 100%;
+            }
+            100% {
+                top: -200%; /* 콘텐츠 길이에 따라 조절 */
+            }
+        }
+
+        .credit-section {
+            margin-bottom: 50px;
+        }
+
+        .credit-section h2 {
+            font-size: 1.5em;
+            color: var(--title-color);
+            margin-bottom: 10px;
+        }
+
+        .credit-section p {
+            font-size: 1.2em;
+            color: var(--name-color);
+            margin: 0;
+        }
+
+        .credit-section img {
+            max-width: 80%;
+            height: auto;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+            z-index: 10;
+        }
+
+        .back-link:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <a href="home.html" class="back-link">돌아가기</a>
+
+    <div class="credits-wrapper">
+        <div class="credits-content">
+
+            <div class="credit-section">
+                <h2>Directed by</h2>
+                <p>총괄 디렉터 이름</p>
+            </div>
+
+            <div class="credit-section">
+                <h2>Lead Developer</h2>
+                <p>리드 개발자 이름</p>
+            </div>
+
+            <div class="credit-section">
+                <h2>UI/UX Design</h2>
+                <p>디자이너 이름</p>
+            </div>
+
+            <div class="credit-section">
+                <h2>Special Thanks to</h2>
+                <p>도움을 주신 분들</p>
+            </div>
+
+            <div class="credit-section">
+                <img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?q=80&w=2070&auto=format&fit=crop" alt="개발 중인 코드 사진">
+                <p>치열했던 개발의 순간</p>
+            </div>
+
+            <div class="credit-section">
+                <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=2070&auto=format&fit=crop" alt="팀원들 사진">
+                <p>함께한 우리 팀</p>
+            </div>
+
+            <div class="credit-section">
+                <h2>그리고...</h2>
+                <p>이 웹사이트를 사용해주시는<br>모든 분들께 감사합니다.</p>
+            </div>
+
+            <!-- 크레딧이 화면 밖으로 완전히 사라지도록 충분한 여백 추가 -->
+            <div style="height: 100vh;"></div>
+
+        </div>
+    </div>
+
+    <script>
+        // 사용자가 페이지를 벗어나면 애니메이션을 정지시켜 리소스를 절약합니다.
+        document.addEventListener("visibilitychange", function() {
+            const content = document.querySelector('.credits-content');
+            if (document.hidden) {
+                content.style.animationPlayState = 'paused';
+            } else {
+                content.style.animationPlayState = 'running';
+            }
+        });
+    </script>
+</body>
+</html>
