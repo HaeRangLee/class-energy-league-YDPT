@@ -1,0 +1,43 @@
+<!-- '더보기' 패널의 HTML 구조 -->
+<div class="overlay" id="overlay"></div>
+
+<div class="settings-panel" id="settings-panel" aria-modal="true" role="dialog" aria-labelledby="settings-panel-title">
+    <div class="settings-header">
+        <h2 id="settings-panel-title">더보기</h2>
+        <button class="close-btn" id="close-settings-btn" aria-label="더보기 닫기">&times;</button>
+    </div>
+    <div class="settings-scroll-container">
+        <div class="accordion-item">
+            <button id="settings-accordion-btn" class="accordion-header" aria-expanded="false">설정</button>
+            <div class="accordion-content">
+                <div class="settings-content">
+                    <div class="setting-item">
+                        <label for="theme-select">테마 선택</label>
+                        <select id="theme-select">
+                            <option value="auto">자동</option>
+                            <option value="light">라이트 모드</option>
+                            <option value="dark">다크 모드</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="my-class-select">내 반 정하기</label>
+                        <select id="my-class-select"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <button class="accordion-header" aria-expanded="false">반별 페이지</button>
+            <div class="accordion-content">
+                <div class="settings-content" id="class-links-content"></div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
+        </div>
+        <div class="accordion-item">
+            <a href="credits.html" id="credits-link" class="accordion-header" style="display:block; text-decoration: none;">개발자 노트</a>
+        </div>
+        <!-- home.html 전용 메뉴는 JS로 동적 추가 -->
+    </div>
+</div>

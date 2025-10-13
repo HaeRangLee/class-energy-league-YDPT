@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ydp</title>
+    <title>YDP 에너지 절약 대회</title>
+    <link rel="stylesheet" href="common.css">
     <style>
+        /* home.html 전용 스타일 */
         :root {
-            --bg-overlay: rgba(232, 245, 233, 0.5);
-            --board-bg: #fafdfa;
-            --shadow-color: rgba(46, 81, 46, 0.1);
-            --title-color: #1b5e20;
-            --border-color: #dceddc;
             --rank-number-color: #558b2f;
-            --name-color: #444;
             --rank-name-color: #6a8a6b;
             --score-color: #4CAF50;
             --link-color: #b0b0b0;
@@ -20,19 +16,10 @@
             --rank1-bg: #F1F8E9; --rank1-border: #7CB342;
             --rank2-bg: #E8F5E9; --rank2-border: #4CAF50;
             --rank3-bg: #EFEBE9; --rank3-border: #A1887F;
-            --my-rank-border: #FFD700; /* Gold for highlighting 'me' */
-            --my-rank-shadow: rgba(255, 215, 0, 0.5);
         }
 
-        /* 다크 모드 테마 변수 */
         body[data-theme="dark"] {
-            --bg-overlay: rgba(20, 20, 20, 0.6);
-            --board-bg: #2c3e50; /* 어두운 남색 계열 */
-            --shadow-color: rgba(0, 0, 0, 0.2);
-            --title-color: #a5d6a7; /* 밝은 녹색 */
-            --border-color: #34495e;
             --rank-number-color: #81c784;
-            --name-color: #ecf0f1; /* 밝은 회색 */
             --rank-name-color: #95a5a6; /* 중간 회색 */
             --score-color: #a5d6a7;
             --link-color: #7f8c8d;
@@ -41,8 +28,6 @@
             --rank2-bg: #34495e; --rank2-border: #4CAF50;
             --rank3-bg: #314457; --rank3-border: #A1887F;
         }
-
-
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -80,28 +65,6 @@
             box-sizing: border-box;
             min-height: 0; /* Flexbox fix for overflow */
         }
-        .site-header {
-            width: 100%;
-            background-color: var(--title-color);
-            color: var(--board-bg);
-            /* Use flexbox to center content and add icons */
-            display: flex;
-            justify-content: center;
-            position: relative; /* 자식 요소의 position 기준 */
-            align-items: center;
-            padding: 15px 0;
-            font-size: 1.6em; /* 폰트 크기 증가 */
-            font-weight: 700;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        /* Add cute nature icons on both sides of the title */
-        .site-header::before,
-        .site-header::after {
-            content: '🌿';
-            font-size: 0.7em;
-            margin: 0 15px;
-            opacity: 0.9;
-        }
         h1 {
             text-align: center;
             color: var(--title-color);
@@ -131,6 +94,12 @@
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
             position: relative;
             cursor: pointer;
+        }
+        /* 페이지 로드 시 항목 등장 애니메이션 */
+        .fade-in-item {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
         }
         /* 순위 변경 애니메이션을 위한 스타일 */
         .ranking-item-move {
@@ -323,146 +292,6 @@
             }
         }
 
-        /* 설정 버튼 스타일 */
-        .settings-btn {
-            position: fixed;
-            top: 15px;
-            right: 20px;
-            background: none;
-            background-color: var(--title-color);
-            color: var(--board-bg);
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-weight: 600;
-            font-size: 0.9em;
-            cursor: pointer;
-            z-index: 1001;
-            transition: opacity 0.2s ease;
-        }
-        .settings-btn:hover {
-            opacity: 0.9;
-        }
-        /* 설정 패널 스타일 */
-        .settings-panel {
-            position: fixed;
-            top: 0;
-            right: -300px; /* 화면 오른쪽에 숨김 */
-            width: 280px;
-            height: 100%;
-            background-color: #fff;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-            z-index: 1002;
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            flex-direction: column;
-        }
-        .settings-panel.open {
-            right: 0; /* 패널 보이기 */
-        }
-        .settings-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .settings-header h2 { margin: 0; font-size: 1.3em; color: var(--title-color); }
-        .close-btn { background: none; border: none; font-size: 2em; cursor: pointer; color: #999; }
-        .settings-content { padding: 20px; }
-        .settings-scroll-container {
-            flex-grow: 1; /* 헤더를 제외한 나머지 공간을 모두 차지 */
-            overflow-y: auto; /* 내용이 넘칠 경우 세로 스크롤 생성 */
-            padding-bottom: 20px; /* 스크롤 시 하단 여백 확보 */
-        }
-
-        .setting-item { margin-bottom: 20px; }
-        .setting-item label { display: block; font-weight: 600; color: var(--name-color); margin-bottom: 8px; }
-        .setting-item select, .setting-item input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        /* 오버레이 스타일 */
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        /* 다크 모드 설정 패널 스타일 */
-        body[data-theme="dark"] .settings-panel {
-            background-color: #2c3e50;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.4);
-        }
-        body[data-theme="dark"] .settings-header {
-            border-bottom-color: #34495e;
-        }
-        body[data-theme="dark"] .close-btn { color: #bdc3c7; }
-        body[data-theme="dark"] .setting-item select,
-        body[data-theme="dark"] .setting-item input {
-            background-color: #34495e;
-            border-color: #4a637b;
-            color: #ecf0f1;
-        }
-
-        /* 아코디언 메뉴 스타일 */
-        .accordion-item {
-            border-bottom: 1px solid var(--border-color);
-        }
-        .accordion-header {
-            width: 100%;
-            background: none;
-            border: none;
-            text-align: left;
-            padding: 15px 20px;
-            font-size: 1.1em;
-            font-weight: 600;
-            color: var(--name-color);
-            cursor: pointer;
-        }
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-        }
-        .class-link-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .class-link-grid a {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 15px 5px;
-            color: var(--title-color);
-            background-color: var(--border-color);
-            text-decoration: none;
-            font-weight: 800; /* 굵게 */
-            font-size: 1.5em; /* 크게 */
-            border-radius: 8px;
-            transition: transform 0.2s ease, background-color 0.2s ease;
-        }
-        .class-link-grid a:hover {
-            transform: scale(1.05);
-            background-color: var(--rank-number-color);
-            color: var(--board-bg);
-        }
     </style>
 </head>
 <body>
@@ -506,10 +335,10 @@
         }
         .indicator-label { font-size: 0.85em; color: var(--text-color); }
         .indicator-value { font-size: 2em; font-weight: 800; line-height: 1.2; }
-        .indicator-value.increase { color: #d32f2f; } /* Red */
-        .indicator-value.decrease { color: #1976d2; } /* Blue */
-        body[data-theme="dark"] .indicator-value.increase { color: #ff8a80; } /* Light Red */
-        body[data-theme="dark"] .indicator-value.decrease { color: #90caf9; } /* Light Blue */
+        .indicator-value.increase { color: #e53935; } /* 선명한 빨강 */
+        .indicator-value.decrease { color: #1e88e5; } /* 선명한 파랑 */
+        body[data-theme="dark"] .indicator-value.increase { color: #ef5350; }
+        body[data-theme="dark"] .indicator-value.decrease { color: #42a5f5; }
 
         @media (max-width: 900px) {
             .indicators-wrapper {
@@ -527,34 +356,34 @@
     </style>
 
     <!-- 튜토리얼 오버레이 -->
-    <div id="tutorial-overlay" style="display: none;">
-        <div id="tutorial-step-1" class="tutorial-step">
-            <div class="tutorial-box" style="top: 65px; right: 20px;">
-                <h3>환영합니다! 👋</h3>
-                <p>먼저 '내 반'을 설정하여<br>우리 반 순위를 쉽게 확인하세요.</p>
-                <p>오른쪽 위 '더보기' 버튼을 눌러주세요.</p>
-            </div>
+    <div id="tutorial-step-1" class="tutorial-step" style="display: none;">
+        <div class="tutorial-box" style="top: 75px; right: 20px; transform: translateX(0);">
+            <div class="tutorial-arrow up-right"></div>
+            <h3>환영합니다! 👋</h3>
+            <p>먼저 '내 반'을 설정하여<br>우리 반 순위를 쉽게 확인하세요.</p>
+            <p>오른쪽 위 '더보기' 버튼을 눌러주세요.</p>
+            <button id="skip-tutorial-btn" class="tutorial-skip-btn">다시 보지 않기</button>
         </div>
-        <div id="tutorial-step-2" class="tutorial-step" style="display: none;">
-            <div class="tutorial-box">
-                <h3>좋아요!</h3>
-                <p>이제 '설정' 메뉴를 눌러<br>테마와 반을 선택하세요.</p>
-            </div>
+    </div>
+    <div id="tutorial-step-2" class="tutorial-step" style="display: none;">
+        <div class="tutorial-box">
+            <div class="tutorial-arrow right"></div>
+            <h3>좋아요!</h3>
+            <p>이제 '설정' 메뉴를 눌러<br>테마와 반을 선택하세요.</p>
         </div>
-        <div id="tutorial-step-3" class="tutorial-step" style="display: none;">
-            <div class="tutorial-box">
-                <h3>잘하셨어요!</h3>
-                <p>마지막으로 '내 반 정하기'에서<br>자신의 반을 선택해주세요!</p>
-            </div>
+    </div>
+    <div id="tutorial-step-3" class="tutorial-step" style="display: none;">
+        <div class="tutorial-box">
+            <div class="tutorial-arrow right"></div>
+            <h3>잘하셨어요!</h3>
+            <p>마지막으로 '내 반 정하기'에서<br>자신의 반을 선택해주세요!</p>
         </div>
     </div>
     <style>
-        .tutorial-highlight {
-            z-index: 2001;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
-            border-radius: 8px;
+        .tutorial-box {
+            position: relative; /* 화살표 위치의 기준점 */
         }
-        #tutorial-overlay {
+        .tutorial-step {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
@@ -562,16 +391,46 @@
             pointer-events: none; /* 아래 요소 클릭을 막지 않음 */
         }
         .tutorial-box {
-            position: absolute;
             background-color: var(--board-bg);
             color: var(--name-color);
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.3);
             text-align: center;
-            pointer-events: all; /* 박스 내부는 클릭 가능 */
+            pointer-events: all;
             z-index: 2002; /* 하이라이트 그림자(z-index: 2001) 위에 표시 */
             animation: tutorial-pulse 2s infinite;
+        }
+
+        .tutorial-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+        .tutorial-arrow.up {
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid var(--board-bg);
+        }
+        .tutorial-arrow.right {
+            top: 50%;
+            right: -10px;
+            transform: translateY(-50%);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 10px solid var(--board-bg);
+        }
+        .tutorial-arrow.up-right {
+            width: 15px;
+            height: 15px;
+            background-color: var(--board-bg);
+            position: absolute;
+            top: -7px;
+            right: 25px;
+            transform: rotate(45deg);
         }
 
         @keyframes tutorial-pulse {
@@ -585,63 +444,26 @@
                 box-shadow: 0 5px 20px rgba(0,0,0,0.3);
             }
         }
+        .tutorial-skip-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            text-decoration: underline;
+            font-size: 0.9em;
+            margin-top: 15px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+        .tutorial-skip-btn:hover { opacity: 1; }
     </style>
 
-    <header class="site-header">
+    <header class="site-header fixed">
         YDP 에너지 절약 대회
     </header>
 
     <button class="settings-btn" id="settings-btn" aria-label="더보기 열기">더보기</button>
 
-    <div class="overlay" id="overlay"></div>
-
-    <div class="settings-panel" id="settings-panel">
-        <div class="settings-header">
-            <h2>더보기</h2>
-            <button class="close-btn" id="close-settings-btn" aria-label="더보기 닫기">&times;</button>
-        </div>
-        <div class="settings-scroll-container">
-            <div class="accordion-item">
-                <button class="accordion-header">설정</button>
-                <div class="accordion-content">
-                    <div class="settings-content">
-                        <div class="setting-item">
-                            <label for="theme-select">테마 선택</label>
-                            <select id="theme-select">
-                                <option value="auto">자동</option>
-                                <option value="light">라이트 모드</option>
-                                <option value="dark">다크 모드</option>
-                            </select>
-                        </div>
-                        <div class="setting-item">
-                            <label for="my-class-select">내 반 정하기</label>
-                            <select id="my-class-select"></select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="accordion-item">
-                <button class="accordion-header">반별 페이지</button>
-                <div class="accordion-content">
-                    <div class="settings-content" id="class-links-content">
-                        <!-- JS로 링크 생성 -->
-                    </div>
-                </div>
-            </div>
-            <div class="accordion-item">
-            <a href="compare.html" class="accordion-header" style="display:block; text-decoration: none;">비교페이지</a>
-            </div>
-            <div class="accordion-item">
-                <button id="refresh-ranking-btn" class="accordion-header refresh-btn">랭킹 새로고침</button>
-            </div>
-            <div class="accordion-item">
-                <button id="restart-tutorial-btn" class="accordion-header">튜토리얼 다시보기</button>
-            </div>
-            <div class="accordion-item">
-                <a href="credits.html" class="accordion-header" style="display:block; text-decoration: none;">개발자 노트</a>
-            </div>
-        </div>
-    </div>
+    <div id="settings-panel-placeholder"></div>
 
     <main class="main-container" style="position: relative; display: flex; justify-content: center; align-items: flex-start; width: 100%;">
         <div class="ranking-board">
@@ -655,6 +477,32 @@
         </div>
     </main>
 
+    <!-- 템플릿: 시상대 아이템 -->
+    <template id="podium-item-template">
+        <a href="" class="podium-item">
+            <div class="podium-player">
+                <span class="podium-name"></span>
+            </div>
+            <div class="podium-block">
+                <span class="podium-icon"></span>
+                <span class="podium-rank"></span>
+                <span class="podium-score"></span>
+            </div>
+        </a>
+    </template>
+
+    <!-- 템플릿: 랭킹 리스트 아이템 -->
+    <template id="ranking-list-item-template">
+        <li tabindex="0">
+            <div class="name-rank-wrapper">
+                <span class="name"></span>
+                <span class="rank-name"></span>
+            </div>
+            <span class="score"></span>
+            <a href="" class="team-link" title="정보 보기" aria-label="반 정보 보기">›</a>
+        </li>
+    </template>
+
 
 
     <style>
@@ -663,6 +511,7 @@
 
     <script src="common.js"></script> <!-- 공통 스크립트 파일 불러오기 -->
     <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
+    <script src="_settings-panel.js"></script> <!-- 공통 패널 스크립트 -->
     <script>
         // 전역 변수로 랭킹 데이터와 Firebase DB 참조 저장
         let rankingData = [];
@@ -691,6 +540,9 @@
         function renderRanking() {
             const podiumContainer = document.getElementById('podium-container');
             const listElement = document.getElementById('ranking-list');
+            const podiumTemplate = document.getElementById('podium-item-template');
+            const listItemTemplate = document.getElementById('ranking-list-item-template');
+
             if (!podiumContainer || !listElement) return;
 
             // 상위 3개 팀 (시상대)
@@ -707,43 +559,40 @@
                 else if (rank === 2) icon = '🌲';
                 else if (rank === 3) icon = '🌿';
 
-                podiumHTML += `
-                    <a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}" class="podium-item podium-item-${rank}">
-                        <div class="podium-player">
-                            <span class="podium-name">${team.className}</span>
-                        </div>
-                        <div class="podium-block">
-                            <span class="podium-icon">${icon}</span>
-                            <span class="podium-rank">${rank}위</span>
-                            <span class="podium-score">${team.monthlyUsageIndex}점</span>
-                        </div>
-                    </a>
-                `;
+                const podiumClone = podiumTemplate.content.cloneNode(true);
+                const link = podiumClone.querySelector('a');
+                const href = `info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}`;
+                link.href = href;
+                link.classList.add(`podium-item-${rank}`);
+                podiumClone.querySelector('.podium-name').textContent = team.className;
+                podiumClone.querySelector('.podium-icon').textContent = icon;
+                podiumClone.querySelector('.podium-rank').textContent = `${rank}위`;
+                podiumClone.querySelector('.podium-score').textContent = `${team.monthlyUsageIndex}점`;
+                podiumContainer.appendChild(podiumClone);
             });
-            podiumContainer.innerHTML = podiumHTML;
 
             // 4위 이하 팀 (리스트)
             const lowerRanks = rankingData.slice(3);
-            let listHTML = '';
             lowerRanks.forEach((team, index) => {
                 const rank = index + 4; // 4위부터 시작
                 const originalIndex = index + 3; // 전체 데이터에서의 인덱스
                 const currentScore = team.monthlyUsageIndex;
                 const prevScore = (originalIndex > 0) ? rankingData[originalIndex - 1].monthlyUsageIndex : '';
                 const nextScore = (originalIndex < rankingData.length - 1) ? rankingData[originalIndex + 1].monthlyUsageIndex : '';
+                const href = `info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}`;
 
-                listHTML += `
-                    <li class="rank-${rank}" data-href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}">
-                        <div class="name-rank-wrapper">
-                            <span class="name">${team.className}</span>
-                            <span class="rank-name">${team.classId}</span>
-                        </div>
-                        <span class="score">${team.monthlyUsageIndex}점</span>
-                        <a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${rank}&score=${currentScore}&prevScore=${prevScore}&nextScore=${nextScore}" class="team-link" title="${team.className} 정보 보기" aria-label="${team.className} 반 정보 보기">›</a>
-                    </li>
-                `;
+                const itemClone = listItemTemplate.content.cloneNode(true);
+                const listItem = itemClone.querySelector('li');
+                listItem.classList.add(`rank-${rank}`);
+                listItem.dataset.href = href;
+                listItem.setAttribute('role', 'link');
+                listItem.setAttribute('aria-label', `${team.className} 반 정보 보기, ${rank}위, ${team.monthlyUsageIndex}점`);
+                itemClone.querySelector('.name').textContent = team.className;
+                itemClone.querySelector('.rank-name').textContent = team.classId;
+                itemClone.querySelector('.score').textContent = `${team.monthlyUsageIndex}점`;
+                itemClone.querySelector('.team-link').href = href;
+                listElement.appendChild(itemClone);
             });
-            listElement.innerHTML = listHTML;
         }
         
         // 순위 변경 애니메이션 함수 (FLIP 기법)
@@ -764,6 +613,9 @@
                 }
             });
 
+            // DOM 비우기
+            document.getElementById('podium-container').innerHTML = '';
+            document.getElementById('ranking-list').innerHTML = '';
             // 2. 데이터 업데이트 및 재정렬
             rankingData = newRankingData; // Update global ranking data
 
@@ -832,21 +684,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // --- DOM 요소 가져오기 ---
-            const settingsPanel = document.getElementById('settings-panel');
-            const overlay = document.getElementById('overlay');
-            const settingsBtn = document.getElementById('settings-btn');
-            const closeSettingsBtn = document.getElementById('close-settings-btn');
-            const themeSelect = document.getElementById('theme-select');
-            const myClassSelect = document.getElementById('my-class-select');
-            const tutorialOverlay = document.getElementById('tutorial-overlay');
-            const tutorialSteps = {
-                step1: document.getElementById('tutorial-step-1'),
-                step2: document.getElementById('tutorial-step-2'),
-                step3: document.getElementById('tutorial-step-3')
-            };
-            const settingsAccordionBtn = document.querySelector('.accordion-header'); // '설정' 버튼
-
             // --- 함수 정의 ---
 
             // 테마 적용
@@ -870,12 +707,6 @@
                 });
             };
 
-            // '더보기' 패널 토글
-            const toggleSettingsPanel = () => {
-                settingsPanel.classList.toggle('open');
-                overlay.classList.toggle('active');
-            };
-
             // 내 반 증감률 표시기 업데이트
             const updateMyClassIndicator = (className) => {
                 const indicator = document.getElementById('my-class-indicator');
@@ -893,7 +724,7 @@
                 const change = detailData.comparison.vsLastWeek;
                 const isIncrease = change > 0;
                 const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
-                const icon = isIncrease ? '🔺' : (change < 0 ? '' : '➖');
+                const icon = isIncrease ? '🔺' : (change < 0 ? '🔻' : '➖');
                 indicator.innerHTML = `
                     <span class="indicator-label">${className}</span>
                     <span class="indicator-value"><span class="${valueClass}">${icon}</span> <span class="${valueClass}">${Math.abs(change).toFixed(1)}%</span></span>
@@ -909,7 +740,7 @@
                 const change = realtimedata.mainPage.systemIndexChangeVsLastWeek;
                 const isIncrease = change > 0;
                 const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
-                const icon = isIncrease ? '🔺' : (change < 0 ? '' : '➖');
+                const icon = isIncrease ? '🔺' : (change < 0 ? '🔻' : '➖');
                 rightIndicator.innerHTML = `
                     <span class="indicator-label">지난주 대비</span>
                     <span class="indicator-value"><span class="${valueClass}">${icon}</span> <span class="${valueClass}">${Math.abs(change).toFixed(1)}%</span></span>
@@ -917,108 +748,144 @@
                 setTimeout(() => rightIndicator.classList.add('show'), 10);
             };
 
+            // --- 페이지 고유 로직 시작 ---
+            const tutorialStepsNodeList = document.querySelectorAll('.tutorial-step');
+            const tutorialSteps = {
+                step1: document.getElementById('tutorial-step-1'),
+                step2: document.getElementById('tutorial-step-2'),
+                step3: document.getElementById('tutorial-step-3')
+            };
             // 튜토리얼 종료
             const finishTutorial = () => {
-                if (tutorialOverlay.style.display === 'block') {
-                    tutorialOverlay.style.display = 'none';
-                    document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+                const isTutorialActive = Array.from(tutorialStepsNodeList).some(el => el.style.display === 'block');
+                if (isTutorialActive) {
+                    setCookie('tutorial_completed', 'true', 365);
+                    tutorialStepsNodeList.forEach(el => el.style.display = 'none');
                 }
             };
 
             // 튜토리얼 시작
             const startTutorial = () => {
+                setCookie('tutorial_completed', 'false', 365); // 다시보기를 위해 쿠키 상태 변경
                 finishTutorial(); // 혹시 떠있는 튜토리얼이 있으면 초기화
-                tutorialOverlay.style.display = 'block';
                 tutorialSteps.step1.style.display = 'block';
                 tutorialSteps.step2.style.display = 'none';
                 tutorialSteps.step3.style.display = 'none';
-                settingsBtn.classList.add('tutorial-highlight');
+                
+                const settingsBtn = document.getElementById('settings-btn');
+                const settingsAccordionBtn = document.getElementById('settings-accordion-btn'); // '설정' 버튼
+
+                // Step 1: '더보기' 버튼 위치에 맞게 상자 위치 조정 (기존 인라인 스타일 제거)
+                requestAnimationFrame(() => {
+                    const box1 = tutorialSteps.step1.querySelector('.tutorial-box');
+                    const arrow = box1.querySelector('.tutorial-arrow');
+                    const settingsBtnRect = settingsBtn.getBoundingClientRect();
+                    box1.style.position = 'absolute';
+                    box1.style.top = `${settingsBtnRect.bottom + 15}px`;
+                    box1.style.right = `10px`;
+                    arrow.style.right = `${window.innerWidth - settingsBtnRect.right + (settingsBtnRect.width / 2) - (arrow.offsetWidth / 2) - 10}px`;
+                });
+
+                document.getElementById('skip-tutorial-btn').onclick = () => {
+                    finishTutorial();
+                };
 
                 const step2Handler = () => {
-                    settingsBtn.classList.remove('tutorial-highlight');
                     tutorialSteps.step1.style.display = 'none';
                     tutorialSteps.step2.style.display = 'block';
-                    settingsAccordionBtn.classList.add('tutorial-highlight');
+
+                    // 패널 애니메이션(0.4s)이 끝난 후 위치를 계산하도록 setTimeout 사용
+                    setTimeout(() => {
+                        const box = tutorialSteps.step2.querySelector('.tutorial-box');
+                        const btnRect = settingsAccordionBtn.getBoundingClientRect();
+                        if (btnRect.width > 0) {
+                            box.style.position = 'absolute';
+                            box.style.top = `${btnRect.top + (btnRect.height / 2) - (box.offsetHeight / 2)}px`;
+                            box.style.left = `${btnRect.left - box.offsetWidth - 20}px`; // 왼쪽에 표시
+                        }
+                    }, 400); // 패널 애니메이션 시간과 동일하게 설정
+
                     settingsBtn.removeEventListener('click', step2Handler);
                 };
                 settingsBtn.addEventListener('click', step2Handler);
 
                 const step3Handler = () => {
-                    settingsAccordionBtn.classList.remove('tutorial-highlight');
                     tutorialSteps.step2.style.display = 'none';
                     tutorialSteps.step3.style.display = 'block';
-                    myClassSelect.parentElement.classList.add('tutorial-highlight');
+
+                    // 아코디언 애니메이션(0.3s)이 끝난 후 위치를 계산하도록 setTimeout 사용
+                    setTimeout(() => {
+                        const box = tutorialSteps.step3.querySelector('.tutorial-box');
+                        const selectEl = document.getElementById('my-class-select');
+                        const elRect = selectEl.getBoundingClientRect();
+                        if (elRect.width > 0) {
+                            box.style.position = 'absolute';
+                            box.style.top = `${elRect.top + (elRect.height / 2) - (box.offsetHeight / 2)}px`;
+                            box.style.left = `${elRect.left - box.offsetWidth - 20}px`; // 왼쪽에 표시
+                        }
+                    }, 300); // 아코디언 애니메이션 시간
+
                     settingsAccordionBtn.removeEventListener('click', step3Handler);
                 };
                 settingsAccordionBtn.addEventListener('click', step3Handler);
+
+                // '내 반 정하기'를 클릭하면 마지막 단계로 넘어가는 부분은 콜백에서 처리
             };
 
-            // --- 이벤트 리스너 설정 ---
-            settingsBtn.addEventListener('click', toggleSettingsPanel);
-            closeSettingsBtn.addEventListener('click', toggleSettingsPanel);
-            overlay.addEventListener('click', toggleSettingsPanel);
-            themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
-            myClassSelect.addEventListener('change', (e) => {
-                const myClass = e.target.value;
-                setCookie('myClass', myClass, 365);
+            // 공통 패널 초기화
+            initializeSettingsPanel(realtimedata, (myClass) => {
+                // '내 반' 변경 시 실행될 콜백 함수
                 highlightMyRank(myClass);
                 updateMyClassIndicator(myClass);
-                finishTutorial();
+                finishTutorial(); // 튜토리얼 중 반을 선택하면 튜토리얼 종료
+            }).then(() => {
+                // 패널 로드가 완료된 후, home.html 전용 메뉴 추가
+                const panelContainer = document.querySelector('.settings-scroll-container');
+                if (!panelContainer) return;
+
+                const tutorialItem = document.createElement('div');
+                tutorialItem.className = 'accordion-item';
+                tutorialItem.innerHTML = `<button id="restart-tutorial-btn" class="accordion-header">튜토리얼 다시보기</button>`;
+                panelContainer.insertBefore(tutorialItem, panelContainer.children[3]);
+
+                // 동적으로 추가된 버튼에 이벤트 리스너 연결
+                document.getElementById('restart-tutorial-btn').addEventListener('click', () => {
+                    document.getElementById('settings-panel').classList.remove('open');
+                    document.getElementById('overlay').classList.remove('active');
+                    setTimeout(startTutorial, 400);
+                });
             });
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                if ((getCookie('theme') || 'auto') === 'auto') applyTheme('auto', false);
-            });
-            document.querySelectorAll('.accordion-header').forEach(button => {
-                if (button.tagName === 'BUTTON') {
-                    button.addEventListener('click', () => {
-                        const content = button.nextElementSibling;
-                        content.style.maxHeight = content.style.maxHeight ? null : content.scrollHeight + "px";
-                    });
-                }
-            });
-            document.getElementById('refresh-ranking-btn')?.addEventListener('click', () => {
-                const newSimulatedData = rankingData.map(team => ({...team, monthlyUsageIndex: Math.max(1000, team.monthlyUsageIndex + Math.floor(Math.random() * 101) - 50)})).sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
-                animateRankingUpdate(newSimulatedData);
-                toggleSettingsPanel();
-            });
-            document.getElementById('restart-tutorial-btn')?.addEventListener('click', () => {
-                toggleSettingsPanel();
-                setTimeout(startTutorial, 400);
-            });
+
             document.getElementById('ranking-list').addEventListener('click', (e) => {
                 const targetLi = e.target.closest('li');
-                if (targetLi && targetLi.dataset.href) window.location.href = targetLi.dataset.href;
+                if (targetLi) window.location.href = targetLi.dataset.href;
+            });
+            document.getElementById('ranking-list').addEventListener('keydown', (e) => {
+                const targetLi = e.target.closest('li[data-href]');
+                if (targetLi && (e.key === 'Enter' || e.key === ' ')) window.location.href = targetLi.dataset.href;
             });
 
             // --- 페이지 초기화 실행 ---
-            // 테마 적용
-            const savedTheme = getCookie('theme') || 'auto';
-            applyTheme(savedTheme);
-
             // 데이터 정렬 및 렌더링
             rankingData = sortRanking(realtimedata.mainPage.monthlyRanking);
             renderRanking();
 
-            // '반별 페이지' 링크 생성 함수
-            (() => {
-                const classLinksContent = document.getElementById('class-links-content');
-                if (!classLinksContent) return;
-                const grid = document.createElement('div');
-                grid.className = 'class-link-grid';
-                rankingData.forEach((team, index) => {
-                    grid.innerHTML += `<a href="info.html?classId=${encodeURIComponent(team.classId)}&rank=${index + 1}">${team.className}</a>`;
-                });
-                classLinksContent.appendChild(grid);
-            })();
+            // 페이지 로드 시 등장 애니메이션 적용
+            const itemsToAnimate = document.querySelectorAll('.podium-item, #ranking-list li');
+            itemsToAnimate.forEach((item, index) => {
+                item.classList.add('fade-in-item');
+                setTimeout(() => {
+                    item.style.opacity = '1';
+                    item.style.transform = 'translateY(0)';
+                }, index * 70); // 0.07초 간격으로 순차 적용
+            });
 
             // 저장된 '내 반' 정보 적용
-            populateMyClassSelect(myClassSelect, realtimedata.mainPage.monthlyRanking);
             const savedMyClass = getCookie('myClass');
             if (savedMyClass) {
-                myClassSelect.value = savedMyClass;
                 highlightMyRank(savedMyClass);
                 updateMyClassIndicator(savedMyClass); // 페이지 로드 시 내 반 증감률 업데이트
-            } else {
+            } else if (getCookie('tutorial_completed') !== 'true') {
                 // 쿠키가 없으면 튜토리얼 시작
                 setTimeout(startTutorial, 500); // 페이지가 완전히 그려진 후 시작
             }
