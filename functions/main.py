@@ -461,16 +461,18 @@ def _create_and_save_rtdb_data(updated_daily_docs: dict) -> None:
         class_history = historical_data.get(class_id, {})
         
         # summary 계산
-        summary = _generate_usage_metrics(class_id, today_cumulative_map, class_history)
+        summary = _generate_usage_metrics(class_id, today_cumulative_map, class_history, now)
+        logging.debug(f"- {class_id}반의 summary 데이터를 계산했습니다.")
         
         # comparison 계산
-        comparison = _generate_comparison_metrics(class_id, today_cumulative_map, class_history)
-        
+        comparison = _generate_comparison_metrics(class_id, today_cumulative_map, class_history, now)
+        logging.debug(f"- {class_id}반의 comparison 데이터를 계산했습니다.")
         # trends 데이터 가공
         trends = _format_trends_data(today_cumulative_map, class_history)
+        logging.debug(f"- {class_id}반의 trends 데이터를 가공했습니다.")
         
         all_detail_pages[class_id] = {
-            "className": f"1학년 {class_id.split('-')[1]}반", # 예시
+            "className": f"1학년 {class_id.split('-')[1]}반", 
             "summary": summary,
             "comparison": comparison,
             "trends": trends
@@ -478,8 +480,10 @@ def _create_and_save_rtdb_data(updated_daily_docs: dict) -> None:
     final_rtdb_data["detailPage"] = all_detail_pages
 
     # 3. mainPage 및 comparisonPage 데이터를 계산합니다.
-    final_rtdb_data["mainPage"] = _generate_main_page_data(all_detail_pages)
-    final_rtdb_data["comparisonPage"] = _generate_comparison_page_data(all_detail_pages)
+    final_rtdb_data["mainPage"] = _generate_main_page_data(all_detail_pages,historical_data)
+    logging.debug(f"-{class_id} mainPage 데이터를 생성했습니다.")
+    final_rtdb_data["comparisonPage"] = _generate_comparison_page_data(all_detail_pages,historical_data)
+    logging.debug(f"-{class_id} comparisonPage 데이터를 생성했습니다.")
     
     # 4. 최종 데이터를 Realtime Database에 저장합니다.
     rtdb_ref = db.reference('/')
