@@ -74,7 +74,6 @@ ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (�
 
 */
 
-
 ================================================================================
 |                        Firestore Database Schema                             |
 ================================================================================
@@ -113,45 +112,56 @@ ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (�
 # main.py
 
 from datetime import datetime, timedelta, timezone
-from firebase_functions import options, scheduler_fn
-import logging as logger
+#from firebase_functions import options, scheduler_fn
+from firebase_functions import options, scheduler_fn, https_fn #시뮬레이션용
+import logging
 from firebase_admin import initialize_app, firestore, db
+import google.cloud.firestore_v1.field_path #import FieldPath
+
+
+
 
 # --- 초기 설정 ---
 initialize_app()
 options.set_global_options(region="asia-northeast3", memory=options.MemoryOption.MB_256)
+logging.basicConfig(level=logging.DEBUG)
 # -----------------
 
 # =================================================================================
 # |                         10분마다 실행되는 메인 함수                              |
 # =================================================================================
 
-@https_fn.on_call
+
 #@scheduler_fn.on_schedule(schedule="every 10 minutes")
-def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
+#def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
+@https_fn.on_call()   # 시뮬레이션용
+def analyze_and_update_data(req: https_fn.CallableRequest) -> any: # 시뮬레이션용
     """
     10분마다 실행되어 실시간 데이터 집계 및 Realtime DB 업데이트를 수행합니다.
     """
-    logger.info("✅ (10분 주기) 데이터 분석 작업을 시작합니다.")
+    logging.debug("✅ (10분 주기) 데이터 분석 작업을 시작합니다.")
     try:
         # 1. Firestore 'ac_logs'에서 최근 10분간의 로그를 가져옵니다.
         recent_logs = _get_recent_logs()
         if not recent_logs:
-            logger.info("- 새로운 데이터가 없어 작업을 종료합니다.")
+            logging.debug("- 새로운 데이터가 없어 작업을 종료합니다.")
             return
 
         # 2. 로그에 미리 계산된 usageIndex를 반별로 합산합니다.
         new_points_by_class = _aggregate_indexes_from_logs(recent_logs)
+        logging.debug("🎉 (10분 주기) 데이터 분석 및 저장을 성공적으로 완료했습니다.")
 
         # 3. Firestore 'daily_history'에 시간대별 누적 값을 업데이트합니다.
         updated_daily_docs = _update_firestore_history(new_points_by_class)
+        logging.debug("Firestore 'daily_history'에 시간대별 누적 값을 업데이트했습니다.")
 
         # 4. 업데이트된 최신 데이터를 바탕으로 Realtime DB용 최종 JSON을 생성하고 저장합니다.
         _create_and_save_rtdb_data(updated_daily_docs)
+        logging.debug("RealtimeDB를 생성하고 저장했습니다.")
 
-        logger.info("🎉 (10분 주기) 데이터 분석 및 저장을 성공적으로 완료했습니다.")
+        logging.debug("(10분 주기) 데이터 분석 및 저장을 성공적으로 완료했습니다.")
     except Exception as e:
-        logger.error(f"🔥 (10분 주기) 작업 중 에러 발생: {e}")
+        logging.error(f"(10분 주기) 작업 중 에러 발생: {e}")
 
 # =================================================================================
 # |                          자정마다 실행되는 마감 함수                             |
@@ -161,7 +171,7 @@ def finalize_daily_stats(event: scheduler_fn.ScheduledEvent) -> None:
     """
     매일 23시 59분에 실행되어 그날의 데이터를 최종 마감 처리합니다.
     """
-    logger.info("✅ (자정 주기) 일일 데이터 마감 작업을 시작합니다.")
+    logging.debug("✅ (자정 주기) 일일 데이터 마감 작업을 시작합니다.")
     try:
         yesterday_str = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=1)).strftime('%Y-%m-%d')
         firestore_db = firestore.client()
@@ -179,11 +189,11 @@ def finalize_daily_stats(event: scheduler_fn.ScheduledEvent) -> None:
                     # 그날의 가장 마지막 누적 값을 찾아 finalTotal로 저장합니다.
                     final_total = max(cumulative_map.values())
                     yesterday_doc_ref.update({"finalTotal": round(final_total)})
-                    logger.info(f"- {class_id}반 {yesterday_str}의 최종값 {round(final_total)}을 저장했습니다.")
+                    logging.debug(f"- {class_id}반 {yesterday_str}의 최종값 {round(final_total)}을 저장했습니다.")
 
-        logger.info("🎉 (자정 주기) 일일 데이터 마감 작업을 성공적으로 완료했습니다.")
+        logging.debug("🎉 (자정 주기) 일일 데이터 마감 작업을 성공적으로 완료했습니다.")
     except Exception as e:
-        logger.error(f"🔥 (자정 주기) 작업 중 에러 발생: {e}")
+        logging.error(f"🔥 (자정 주기) 작업 중 에러 발생: {e}")
 
 # =================================================================================
 # |                                  헬퍼 함수들                                   |
@@ -198,7 +208,7 @@ def _get_recent_logs() -> list:
     logs_query = firestore_db.collection("ac_logs").where("timestamp", ">=", ten_minutes_ago).stream()
     
     logs = [doc.to_dict() for doc in logs_query]
-    logger.info(f"- Firestore에서 {len(logs)}개의 새 로그를 가져왔습니다.")
+    logging.debug(f"- Firestore에서 {len(logs)}개의 새 로그를 가져왔습니다.")
     return logs
 
 def _aggregate_indexes_from_logs(logs: list) -> dict:
@@ -237,7 +247,7 @@ def _update_firestore_history(points_by_class: dict) -> dict:
         doc_ref.set({"cumulative_by_time": cumulative_map}, merge=True)
         updated_docs[class_id] = cumulative_map
         
-    logger.info(f"- {today_str} Firestore 일일 원장을 업데이트했습니다.")
+    logging.debug(f"- {today_str} Firestore 일일 원장을 업데이트했습니다.")
     return updated_docs
 
 # 헬퍼 함수들 내에서 사용할 시간대 설정 (한국 시간)
@@ -260,12 +270,13 @@ def _get_all_historical_data() -> dict:
         historical_data[class_id] = {}
         
         # 각 반의 daily_history 서브컬렉션에서 40일치 문서를 가져옴
-        daily_docs_query = class_doc.reference.collection("daily_history").where(firestore.FieldPath.document_id(), ">=", start_date_str)
+        #daily_docs_query = class_doc.reference.collection("daily_history").where(FieldPath.document_id(), ">=", start_date_str)
+        daily_docs_query = class_doc.reference.collection("daily_history").where(filter=FieldFilter(FieldPath.document_id(), ">=", start_date_str))
         
         for daily_doc in daily_docs_query.stream():
             historical_data[class_id][daily_doc.id] = daily_doc.to_dict()
             
-    logger.info(f"- {len(historical_data)}개 반의 과거 데이터를 Firestore에서 가져왔습니다.")
+    logging.debug(f"- {len(historical_data)}개 반의 과거 데이터를 Firestore에서 가져왔습니다.")
     return historical_data
 
 def _generate_usage_metrics(class_id: str, today_cumulative_map: dict, historical_data: dict, now: datetime) -> dict:
@@ -428,11 +439,12 @@ def _create_system_wide_history(historical_data: dict) -> dict:
 
 def _create_and_save_rtdb_data(updated_daily_docs: dict) -> None:
     """Realtime DB에 저장할 최종 JSON을 생성하고 저장합니다."""
-    logger.info("- Realtime DB용 데이터 생성을 시작합니다.")
+    logging.debug("- Realtime DB용 데이터 생성을 시작합니다.")
     now = datetime.now(KST)
     all_class_ids = ["1-1", "1-2", "1-3", "1-4", "1-5", "1-6"]
     # 1. 계산에 필요한 모든 과거 데이터를 Firestore에서 딱 한 번만 불러옵니다.
     historical_data = _get_all_historical_data()
+    logging.debug("- Realtime DB용 데이터를 불러옵니다.")
 
     final_rtdb_data = {
         "mainPage": {},
@@ -471,7 +483,7 @@ def _create_and_save_rtdb_data(updated_daily_docs: dict) -> None:
     # 4. 최종 데이터를 Realtime Database에 저장합니다.
     rtdb_ref = db.reference('/')
     rtdb_ref.set(final_rtdb_data)
-    logger.info("- Realtime DB에 최종 데이터를 저장했습니다.")
+    logging.debug("- Realtime DB에 최종 데이터를 저장했습니다.")
 def _format_trends_data(today_map: dict, history: dict) -> dict:
     """그래프용 trends 데이터를 최종 배열 형식으로 가공합니다."""
     now = datetime.now(KST)
