@@ -74,7 +74,6 @@ ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (�
 
 */
 
-
 ================================================================================
 |                        Firestore Database Schema                             |
 ================================================================================
@@ -113,7 +112,8 @@ ALL_CLASS_IDS 하드코딩 말고 어디서든지 가져올 수 있게 하기 (�
 # main.py
 
 from datetime import datetime, timedelta, timezone
-from firebase_functions import options, scheduler_fn
+#from firebase_functions import options, scheduler_fn
+from firebase_functions import options, scheduler_fn, https_fn #시뮬레이션용
 import logging as logger
 from firebase_admin import initialize_app, firestore, db
 
@@ -126,9 +126,11 @@ options.set_global_options(region="asia-northeast3", memory=options.MemoryOption
 # |                         10분마다 실행되는 메인 함수                              |
 # =================================================================================
 
-@https_fn.on_call
+
 #@scheduler_fn.on_schedule(schedule="every 10 minutes")
-def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
+#def analyze_and_update_data(event: scheduler_fn.ScheduledEvent) -> None:
+@https_fn.on_call()   # 시뮬레이션용
+def analyze_and_update_data(req: https_fn.CallableRequest) -> any: # 시뮬레이션용
     """
     10분마다 실행되어 실시간 데이터 집계 및 Realtime DB 업데이트를 수행합니다.
     """
