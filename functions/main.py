@@ -116,7 +116,8 @@ from datetime import datetime, timedelta, timezone
 from firebase_functions import options, scheduler_fn, https_fn #시뮬레이션용
 import logging
 from firebase_admin import initialize_app, firestore, db
-import google.cloud.firestore_v1.field_path #import FieldPath
+from google.cloud.firestore_v1.field_path import FieldPath
+from google.cloud.firestore import FieldFilter
 
 
 
@@ -270,8 +271,8 @@ def _get_all_historical_data() -> dict:
         historical_data[class_id] = {}
         
         # 각 반의 daily_history 서브컬렉션에서 40일치 문서를 가져옴
-        #daily_docs_query = class_doc.reference.collection("daily_history").where(FieldPath.document_id(), ">=", start_date_str)
-        daily_docs_query = class_doc.reference.collection("daily_history").where(filter=FieldFilter(FieldPath.document_id(), ">=", start_date_str))
+        #daily_docs_query = class_doc.reference.collection("daily_history").where(filter=FieldFilter(FieldPath.document_id(), ">=", start_date_str)) --> 이거 KEY가 문자열이 아니라 다른 특수 번호라 오류남. 
+        daily_docs_query = class_doc.reference.collection("daily_history").order_by(FieldPath.document_id()).start_at([start_date_str])
         
         for daily_doc in daily_docs_query.stream():
             historical_data[class_id][daily_doc.id] = daily_doc.to_dict()
