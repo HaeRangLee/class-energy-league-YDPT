@@ -525,12 +525,17 @@ def _generate_main_page_data(all_details: dict, historical_data: dict) -> dict:
     
     # 3. 시스템 전체의 '오늘' 데이터 합산
     system_today_map = {}
+    #    for details in all_details.values():
+    #     for time_str, value in details["trends"]["todayRealtime"]:
+    #         system_today_map[time_str] = system_today_map.get(time_str, 0) + value
     for details in all_details.values():
-        for time_str, value in details["trends"]["todayRealtime"]:
-            system_today_map[time_str] = system_today_map.get(time_str, 0) + value
+        for time_obj in details["trends"]["todayRealtime"]: # 딕셔너리 자체를 가져옴
+            time_str = time_obj["time"]   # 딕셔너리 안에서 'time'을 꺼냄
+            value = time_obj["value"]     # 딕셔너리 안에서 'value'를 꺼냄
+            system_today_map[time_str] = system_today_map.get(time_str, 0) + int(value)
 
     # 4. _generate_comparison_metrics 함수 재사용!
-    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history})
+    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history},now = datetime.now(KST))
     
     return {
         "monthlyRanking": ranking,
@@ -541,16 +546,18 @@ def _generate_main_page_data(all_details: dict, historical_data: dict) -> dict:
 def _generate_comparison_page_data(all_details: dict, historical_data: dict) -> dict:
     """comparisonPage 데이터를 생성합니다."""
     # 1. 시스템 전체의 과거 및 오늘 데이터 생성 (mainPage와 동일)
+    now = datetime.now(KST)
     system_history = _create_system_wide_history(historical_data)
     system_today_map = {}
     for details in all_details.values():
-        for time_obj in details["trends"]["todayRealtime"]:
-            time_str, value = time_obj["time"], time_obj["value"]
-            system_today_map[time_str] = system_today_map.get(time_str, 0) + value
+        for time_obj in details["trends"]["todayRealtime"]: # 딕셔너리 자체를 가져옴
+            time_str = time_obj["time"]   # 딕셔너리 안에서 'time'을 꺼냄
+            value = time_obj["value"]     # 딕셔너리 안에서 'value'를 꺼냄
+            system_today_map[time_str] = system_today_map.get(time_str, 0) + float(value) 
 
     # 2. 기존 함수들을 재사용하여 시스템 전체의 summary와 comparison 계산
-    system_summary = _generate_usage_metrics("system", system_today_map, {"system": system_history})
-    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history})
+    system_summary = _generate_usage_metrics("system", system_today_map, {"system": system_history}, now)
+    system_comparison = _generate_comparison_metrics("system", system_today_map, {"system": system_history},now)
     
     # 3. classTrends 데이터 구성
     class_trends = [
