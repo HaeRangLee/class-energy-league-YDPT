@@ -570,4 +570,3 @@ def _generate_comparison_page_data(all_details: dict, historical_data: dict) -> 
         "classTrends": class_trends,
         "lastUpdated": datetime.now(KST).isoformat()
     }
-
