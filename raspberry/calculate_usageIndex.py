@@ -13,14 +13,14 @@ class UsageIndexCalculator:
         indoor_temp_setting: Optional[float], #실내온도는 float로 받아오기,만약 안되면 float('nan')으로 반환
         fan_speed: Optional[str], #풍속은 str로 받아오기,만약 측정 안되면 None으로 반환
         outdoor_temp: Optional[float], #외부온도는 float으로 받아오기,만약 측정 안되면 float('nan')으로 반환
-        is_on: Optional[bool] #외부온도는 bool로 받아오기,만약 측정 안되면 None으로 반환
+        isOn: Optional[bool] #외부온도는 bool로 받아오기,만약 측정 안되면 None으로 반환
     ) -> float:
         # 결측치 확인
         def is_missing(value):
             return value is None or (isinstance(value, float) and math.isnan(value))
 
         # --- 1. 꺼져 있는 경우 ---
-        if is_on is False:
+        if isOn is False:
             return 0.0
 
         # --- 2. 결측치 존재 또는 상태 확인 불가 → 이동평균 반환 ---
@@ -28,7 +28,7 @@ class UsageIndexCalculator:
             is_missing(outdoor_temp) or
             mode is None or
             fan_speed is None or
-            is_on is None):
+            isOn is None):
             return round(sum(self.recent_values) / len(self.recent_values), 2)
 
         # --- 3. 사용지수 계산 ---

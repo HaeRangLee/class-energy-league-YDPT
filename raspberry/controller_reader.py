@@ -7,9 +7,10 @@ import sys
 import json # 💡 json 모듈 추가
 from google import genai
 from google.genai import types
+from calculate_usageIndex import UsageIndexCalculator
 
 # ✅ 환경 변수에 API 키 설정 (안전하게는 코드에 직접 넣지 말고 환경변수로 설정)
-os.environ['GEMINI_API_KEY'] = "AIzaSyC0o" 
+os.environ['GEMINI_API_KEY'] = "" 
 
 def generate(image_path: str) -> dict: # 💡 반환 타입을 dict로 명시
     # ✅ 이미지 파일 확인
@@ -52,10 +53,12 @@ Provide the operating status of the air conditioner controller in the following 
 Return only the JSON without a code block.
 
 {
-"status": "heating|cooling|OFF",
+"mode": "heating|cooling|OFF",
 "temperature": "number|Po",
-"wind": "verylow|low|medium|strong|auto|power"
+"fanSpeed": "verylow|low|medium|strong|auto|power"
+"isOn": "true|false",
 }
+**Set the value of "isOn" to false if "status" is "OFF", otherwise set it to true **                                 
 """),
         ],
     )
