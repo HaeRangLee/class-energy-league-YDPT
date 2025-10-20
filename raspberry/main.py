@@ -5,6 +5,8 @@ import requests
 import logging
 from controller_reader import read_controller
 from calculate_usageIndex import UsageIndexCalculator
+from raspberry_pi_firebase_init import initialize_firebase_admin_sdk
+from firebase_admin import firestore
 
 # -------------------------------
 # 기본 설정
@@ -148,5 +150,10 @@ def main():
         time.sleep(sleep_duration)
 
 if __name__ == "__main__":
-    #main()
-    camera_path = capture_image
+    if initialize_firebase_admin_sdk():
+        logging.info("Firebase Admin SDK 초기화 성공. 메인 애플리케이션 시작.")
+        #main()
+        camera_path = capture_image
+    else :
+        logging.critical("Firebase Admin SDK 초기화 실패. 애플리케이션 종료.")
+        print("Firebase Admin SDK 초기화 실패. 애플리케이션을 시작할 수 없습니다.")
