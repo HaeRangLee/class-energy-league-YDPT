@@ -53,12 +53,11 @@ Provide the operating status of the air conditioner controller in the following 
 Return only the JSON without a code block.
 
 {
-"mode": "heating|cooling|OFF",
-"temperature": "number|Po",
-"fanSpeed": "verylow|low|medium|strong|auto|power"
-"isOn": "true|false",
-}
-**Set the value of "isOn" to false if "status" is "OFF", otherwise set it to true **                                 
+"mode": "난방|냉방",
+"temperature": "number|Po", //
+"fanSpeed": "미약|약|중|강|auto|파워"
+"isOn": "true|false", //boolean                       
+}     
 """),
         ],
     )

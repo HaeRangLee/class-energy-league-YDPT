@@ -148,4 +148,5 @@ def main():
         time.sleep(sleep_duration)
 
 if __name__ == "__main__":
-    main()
+    #main()
+    camera_path = capture_image
