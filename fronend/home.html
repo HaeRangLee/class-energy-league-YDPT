@@ -509,30 +509,33 @@
         .refresh-btn { color: var(--link-hover-color); }
     </style>
 
+    <!-- Firebase SDK (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-init.js"></script>
+
     <script src="common.js"></script> <!-- 공통 스크립트 파일 불러오기 -->
     <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
     <script src="_settings-panel.js"></script> <!-- 공통 패널 스크립트 -->
     <script>
-        // 전역 변수로 랭킹 데이터와 Firebase DB 참조 저장
+        // 전역 변수로 랭킹 데이터, 전체 데이터, 초기 로딩 상태 저장
         let rankingData = [];
+        let fullData = null;
+        let isInitialLoad = true;
+
+
 
         // 1. 점수(monthlyUsageIndex) 기준으로 오름차순 정렬 (점수가 낮을수록 순위가 높음)
         const sortRanking = (data) => [...data].sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
         
-        // 2. 점수 차이에 따른 색상 자동 계산 함수
+        // 2. 점수 차이에 따른 색상 자동 계산 함수 (현재 코드에서는 사용되지 않음)
         function getDiffStyle(difference) {
             if (difference <= 0) return '';
-
-            // 점수 차이 범위를 0 ~ 300점으로 가정. 300점 이상은 모두 가장 붉은색.
             const maxDiff = 300;
-            const normalizedDiff = Math.min(difference, maxDiff) / maxDiff; // 0 ~ 1 사이 값으로 정규화
-
-            // Hue(색상): 60(노랑) ~ 0(빨강) 사이를 매핑
+            const normalizedDiff = Math.min(difference, maxDiff) / maxDiff;
             const hue = 60 - (normalizedDiff * 60);
             const saturation = 95;
             const lightness = 55;
-
-            // 글씨 색상을 흰색으로 통일
             return `style="--diff-bg-color: hsl(${hue}, ${saturation}%, ${lightness}%); --diff-text-color: white;"`;
         }
 
@@ -545,9 +548,11 @@
 
             if (!podiumContainer || !listElement) return;
 
+            podiumContainer.innerHTML = '';
+            listElement.innerHTML = '';
+
             // 상위 3개 팀 (시상대)
             const top3 = rankingData.slice(0, 3);
-            let podiumHTML = '';
             top3.forEach((team, index) => {
                 const rank = index + 1;
                 const currentScore = team.monthlyUsageIndex;
@@ -574,8 +579,8 @@
             // 4위 이하 팀 (리스트)
             const lowerRanks = rankingData.slice(3);
             lowerRanks.forEach((team, index) => {
-                const rank = index + 4; // 4위부터 시작
-                const originalIndex = index + 3; // 전체 데이터에서의 인덱스
+                const rank = index + 4;
+                const originalIndex = index + 3;
                 const currentScore = team.monthlyUsageIndex;
                 const prevScore = (originalIndex > 0) ? rankingData[originalIndex - 1].monthlyUsageIndex : '';
                 const nextScore = (originalIndex < rankingData.length - 1) ? rankingData[originalIndex + 1].monthlyUsageIndex : '';
@@ -597,9 +602,8 @@
         
         // 순위 변경 애니메이션 함수 (FLIP 기법)
         function animateRankingUpdate(newRankingData) {
-            // 1. 이전 위치 측정
             const oldRanks = {};
-            rankingData.forEach((team, index) => { // Use the current rankingData
+            rankingData.forEach((team, index) => {
                 oldRanks[team.className] = index + 1;
             });
 
@@ -608,26 +612,22 @@
             rankingItems.forEach(el => {
                 const nameEl = el.querySelector('.podium-name') || el.querySelector('.name');
                 if (nameEl) {
-                    const teamName = nameEl.textContent; // Use className for identification
+                    const teamName = nameEl.textContent;
                     oldPositions[teamName] = el.getBoundingClientRect();
                 }
             });
 
-            // DOM 비우기
             document.getElementById('podium-container').innerHTML = '';
             document.getElementById('ranking-list').innerHTML = '';
-            // 2. 데이터 업데이트 및 재정렬
-            rankingData = newRankingData; // Update global ranking data
+            rankingData = newRankingData;
 
-            // 3. DOM 업데이트 (리렌더링)
             renderRanking();
-            // '내 학급' 하이라이트 다시 적용
+            
             const myClassSelect = document.getElementById('my-class-select');
             if (myClassSelect && myClassSelect.value) {
                 highlightMyRank(myClassSelect.value);
             }
 
-            // 4. 새로운 위치 측정 및 애니메이션 적용
             const newRankingItems = document.querySelectorAll('.podium-item, #ranking-list li');
             newRankingItems.forEach(el => {
                 const nameEl = el.querySelector('.podium-name') || el.querySelector('.name');
@@ -638,11 +638,8 @@
                 const newPos = el.getBoundingClientRect();
 
                 if (oldPos) {
-                    // 이전 위치와 현재 위치의 차이 계산
                     const deltaX = oldPos.left - newPos.left;
                     const deltaY = oldPos.top - newPos.top;
-
-                    // 순위 변동 확인 및 화살표 표시
                     const newRank = rankingData.findIndex(t => t.className === teamName) + 1;
                     const oldRank = oldRanks[teamName];
 
@@ -657,17 +654,13 @@
                             indicator.textContent = '🔻';
                         }
                         el.appendChild(indicator);
-                        // 애니메이션이 끝나면 요소 제거
                         indicator.addEventListener('animationend', () => indicator.remove());
                     }
 
-                    // 위치 변화가 있을 경우에만 애니메이션 적용
                     if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
-                        // INVERT: 이전 위치로 순간이동
                         el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
                         el.style.transition = 'transform 0s';
 
-                        // PLAY: 다음 프레임에서 원래 위치로 돌아오는 애니메이션 실행
                         requestAnimationFrame(() => {
                             el.classList.add('ranking-item-move');
                             el.style.transform = '';
@@ -675,7 +668,6 @@
                     }
                 }
 
-                // 애니메이션이 끝나면 transition 속성 제거
                 el.addEventListener('transitionend', () => {
                     el.classList.remove('ranking-item-move');
                     el.style.transition = '';
@@ -693,7 +685,8 @@
                     : theme;
                 document.body.setAttribute('data-theme', effectiveTheme);
                 if (saveCookie) setCookie('theme', theme, 365);
-                themeSelect.value = theme;
+                const themeSelect = document.getElementById('theme-select');
+                if (themeSelect) themeSelect.value = theme;
             };
 
             // 내 반 하이라이트
@@ -710,17 +703,20 @@
             // 내 반 증감률 표시기 업데이트
             const updateMyClassIndicator = (className) => {
                 const indicator = document.getElementById('my-class-indicator');
-                if (!indicator) return;
+                if (!indicator || !fullData) return;
+                
                 if (!className) {
                     indicator.style.display = 'none';
                     return;
                 }
-                const classData = realtimedata.mainPage.monthlyRanking.find(c => c.className === className);
-                const detailData = classData ? realtimedata.detailPage[classData.classId] : null;
+                const classData = fullData.mainPage.monthlyRanking.find(c => c.className === className);
+                const detailData = classData ? fullData.detailPage[classData.classId] : null;
+                
                 if (!detailData) {
                     indicator.style.display = 'none';
                     return;
                 }
+                
                 const change = detailData.comparison.vsLastWeek;
                 const isIncrease = change > 0;
                 const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
@@ -736,8 +732,9 @@
             // 전체 증감률 표시기 업데이트
             const updateSideIndicators = () => {
                 const rightIndicator = document.getElementById('right-indicator');
-                if (!rightIndicator) return;
-                const change = realtimedata.mainPage.systemIndexChangeVsLastWeek;
+                if (!rightIndicator || !fullData) return;
+                
+                const change = fullData.mainPage.systemIndexChangeVsLastWeek;
                 const isIncrease = change > 0;
                 const valueClass = isIncrease ? 'increase' : (change < 0 ? 'decrease' : '');
                 const icon = isIncrease ? '🔺' : (change < 0 ? '🔻' : '➖');
@@ -747,35 +744,39 @@
                 `;
                 setTimeout(() => rightIndicator.classList.add('show'), 10);
             };
-
-            // --- 페이지 고유 로직 시작 ---
-            const tutorialStepsNodeList = document.querySelectorAll('.tutorial-step');
+            
+            // 증감률 표시기 및 '내 반' 하이라이트 업데이트
+            const updateIndicatorsAndMyRank = () => {
+                const savedMyClass = getCookie('myClass');
+                if (savedMyClass) {
+                    highlightMyRank(savedMyClass);
+                    updateMyClassIndicator(savedMyClass);
+                }
+                updateSideIndicators();
+            };
+            
+            // 튜토리얼 관련 함수들
             const tutorialSteps = {
                 step1: document.getElementById('tutorial-step-1'),
                 step2: document.getElementById('tutorial-step-2'),
                 step3: document.getElementById('tutorial-step-3')
             };
-            // 튜토리얼 종료
             const finishTutorial = () => {
-                const isTutorialActive = Array.from(tutorialStepsNodeList).some(el => el.style.display === 'block');
+                const isTutorialActive = Object.values(tutorialSteps).some(el => el.style.display === 'block');
                 if (isTutorialActive) {
                     setCookie('tutorial_completed', 'true', 365);
-                    tutorialStepsNodeList.forEach(el => el.style.display = 'none');
+                    Object.values(tutorialSteps).forEach(el => el.style.display = 'none');
                 }
             };
-
-            // 튜토리얼 시작
             const startTutorial = () => {
-                setCookie('tutorial_completed', 'false', 365); // 다시보기를 위해 쿠키 상태 변경
-                finishTutorial(); // 혹시 떠있는 튜토리얼이 있으면 초기화
+                setCookie('tutorial_completed', 'false', 365);
+                finishTutorial();
                 tutorialSteps.step1.style.display = 'block';
                 tutorialSteps.step2.style.display = 'none';
                 tutorialSteps.step3.style.display = 'none';
                 
                 const settingsBtn = document.getElementById('settings-btn');
-                const settingsAccordionBtn = document.getElementById('settings-accordion-btn'); // '설정' 버튼
-
-                // Step 1: '더보기' 버튼 위치에 맞게 상자 위치 조정 (기존 인라인 스타일 제거)
+                
                 requestAnimationFrame(() => {
                     const box1 = tutorialSteps.step1.querySelector('.tutorial-box');
                     const arrow = box1.querySelector('.tutorial-arrow');
@@ -786,76 +787,119 @@
                     arrow.style.right = `${window.innerWidth - settingsBtnRect.right + (settingsBtnRect.width / 2) - (arrow.offsetWidth / 2) - 10}px`;
                 });
 
-                document.getElementById('skip-tutorial-btn').onclick = () => {
-                    finishTutorial();
-                };
+                document.getElementById('skip-tutorial-btn').onclick = finishTutorial;
 
                 const step2Handler = () => {
                     tutorialSteps.step1.style.display = 'none';
                     tutorialSteps.step2.style.display = 'block';
 
-                    // 패널 애니메이션(0.4s)이 끝난 후 위치를 계산하도록 setTimeout 사용
                     setTimeout(() => {
+                        const settingsAccordionBtn = document.getElementById('settings-accordion-btn');
+                        if (!settingsAccordionBtn) return;
                         const box = tutorialSteps.step2.querySelector('.tutorial-box');
                         const btnRect = settingsAccordionBtn.getBoundingClientRect();
                         if (btnRect.width > 0) {
                             box.style.position = 'absolute';
                             box.style.top = `${btnRect.top + (btnRect.height / 2) - (box.offsetHeight / 2)}px`;
-                            box.style.left = `${btnRect.left - box.offsetWidth - 20}px`; // 왼쪽에 표시
+                            box.style.left = `${btnRect.left - box.offsetWidth - 20}px`;
                         }
-                    }, 400); // 패널 애니메이션 시간과 동일하게 설정
+                    }, 400);
 
                     settingsBtn.removeEventListener('click', step2Handler);
                 };
-                settingsBtn.addEventListener('click', step2Handler);
+                settingsBtn.addEventListener('click', step2Handler, { once: true });
 
                 const step3Handler = () => {
                     tutorialSteps.step2.style.display = 'none';
                     tutorialSteps.step3.style.display = 'block';
 
-                    // 아코디언 애니메이션(0.3s)이 끝난 후 위치를 계산하도록 setTimeout 사용
                     setTimeout(() => {
-                        const box = tutorialSteps.step3.querySelector('.tutorial-box');
                         const selectEl = document.getElementById('my-class-select');
+                        if (!selectEl) return;
+                        const box = tutorialSteps.step3.querySelector('.tutorial-box');
                         const elRect = selectEl.getBoundingClientRect();
                         if (elRect.width > 0) {
                             box.style.position = 'absolute';
                             box.style.top = `${elRect.top + (elRect.height / 2) - (box.offsetHeight / 2)}px`;
-                            box.style.left = `${elRect.left - box.offsetWidth - 20}px`; // 왼쪽에 표시
+                            box.style.left = `${elRect.left - box.offsetWidth - 20}px`;
                         }
-                    }, 300); // 아코디언 애니메이션 시간
-
-                    settingsAccordionBtn.removeEventListener('click', step3Handler);
+                    }, 300);
+                    
+                    const settingsAccordionBtn = document.getElementById('settings-accordion-btn');
+                    if (settingsAccordionBtn) {
+                        settingsAccordionBtn.removeEventListener('click', step3Handler);
+                    }
                 };
-                settingsAccordionBtn.addEventListener('click', step3Handler);
-
-                // '내 반 정하기'를 클릭하면 마지막 단계로 넘어가는 부분은 콜백에서 처리
+                
+                document.body.addEventListener('click', function handler(event) {
+                    const settingsAccordionBtn = document.getElementById('settings-accordion-btn');
+                    if (event.target === settingsAccordionBtn) {
+                        step3Handler();
+                        document.body.removeEventListener('click', handler);
+                    }
+                });
             };
 
-            // 공통 패널 초기화
-            initializeSettingsPanel(realtimedata, (myClass) => {
-                // '내 반' 변경 시 실행될 콜백 함수
-                highlightMyRank(myClass);
-                updateMyClassIndicator(myClass);
-                finishTutorial(); // 튜토리얼 중 반을 선택하면 튜토리얼 종료
-            }).then(() => {
-                // 패널 로드가 완료된 후, home.html 전용 메뉴 추가
-                const panelContainer = document.querySelector('.settings-scroll-container');
-                if (!panelContainer) return;
+            // 공통 패널 초기화 및 튜토리얼 관련 로직
+            const initializeSettingsPanelAndTutorial = (data) => {
+                initializeSettingsPanel(data, (myClass) => {
+                    highlightMyRank(myClass);
+                    updateMyClassIndicator(myClass);
+                    finishTutorial();
+                }).then(() => {
+                    const panelContainer = document.querySelector('.settings-scroll-container');
+                    if (!panelContainer) return;
 
-                const tutorialItem = document.createElement('div');
-                tutorialItem.className = 'accordion-item';
-                tutorialItem.innerHTML = `<button id="restart-tutorial-btn" class="accordion-header">튜토리얼 다시보기</button>`;
-                panelContainer.insertBefore(tutorialItem, panelContainer.children[3]);
+                    const existingButton = document.getElementById('restart-tutorial-btn');
+                    if(existingButton) return;
 
-                // 동적으로 추가된 버튼에 이벤트 리스너 연결
-                document.getElementById('restart-tutorial-btn').addEventListener('click', () => {
-                    document.getElementById('settings-panel').classList.remove('open');
-                    document.getElementById('overlay').classList.remove('active');
-                    setTimeout(startTutorial, 400);
+                    const tutorialItem = document.createElement('div');
+                    tutorialItem.className = 'accordion-item';
+                    tutorialItem.innerHTML = `<button id="restart-tutorial-btn" class="accordion-header">튜토리얼 다시보기</button>`;
+                    panelContainer.insertBefore(tutorialItem, panelContainer.children[3]);
+
+                    document.getElementById('restart-tutorial-btn').addEventListener('click', () => {
+                        document.getElementById('settings-panel').classList.remove('open');
+                        document.getElementById('overlay').classList.remove('active');
+                        setTimeout(startTutorial, 400);
+                    });
+
+                    if (!getCookie('myClass') && getCookie('tutorial_completed') !== 'true') {
+                        setTimeout(startTutorial, 500);
+                    }
                 });
-            });
+            };
+            
+            // 데이터 기반으로 페이지 전체를 초기화하고 렌더링하는 함수
+            const initializeAppWithData = (data) => {
+                fullData = data;
+                const newRankingData = sortRanking(data.mainPage.monthlyRanking);
 
+                if (isInitialLoad) {
+                    rankingData = newRankingData;
+                    renderRanking();
+
+                    const itemsToAnimate = document.querySelectorAll('.podium-item, #ranking-list li');
+                    itemsToAnimate.forEach((item, index) => {
+                        item.classList.add('fade-in-item');
+                        setTimeout(() => {
+                            item.style.opacity = '1';
+                            item.style.transform = 'translateY(0)';
+                        }, index * 70);
+                    });
+
+                    // 공통 패널과 튜토리얼은 첫 로딩 시에만 초기화
+                    initializeSettingsPanelAndTutorial(data);
+
+                } else {
+                    animateRankingUpdate(newRankingData);
+                }
+
+                updateIndicatorsAndMyRank();
+                isInitialLoad = false;
+            };
+
+            // --- 이벤트 리스너 ---
             document.getElementById('ranking-list').addEventListener('click', (e) => {
                 const targetLi = e.target.closest('li');
                 if (targetLi) window.location.href = targetLi.dataset.href;
@@ -865,33 +909,18 @@
                 if (targetLi && (e.key === 'Enter' || e.key === ' ')) window.location.href = targetLi.dataset.href;
             });
 
-            // --- 페이지 초기화 실행 ---
-            // 데이터 정렬 및 렌더링
-            rankingData = sortRanking(realtimedata.mainPage.monthlyRanking);
-            renderRanking();
-
-            // 페이지 로드 시 등장 애니메이션 적용
-            const itemsToAnimate = document.querySelectorAll('.podium-item, #ranking-list li');
-            itemsToAnimate.forEach((item, index) => {
-                item.classList.add('fade-in-item');
-                setTimeout(() => {
-                    item.style.opacity = '1';
-                    item.style.transform = 'translateY(0)';
-                }, index * 70); // 0.07초 간격으로 순차 적용
+            // --- Firebase 데이터 수신 및 앱 시작 ---
+            database.ref().on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    initializeAppWithData(data);
+                } else {
+                    console.error("Firebase에서 데이터를 불러오지 못했습니다.");
+                    // TODO: 사용자에게 데이터 로딩 실패를 알리는 UI 처리
+                }
+            }, (error) => {
+                console.error("Firebase 데이터 읽기 오류:", error);
             });
-
-            // 저장된 '내 반' 정보 적용
-            const savedMyClass = getCookie('myClass');
-            if (savedMyClass) {
-                highlightMyRank(savedMyClass);
-                updateMyClassIndicator(savedMyClass); // 페이지 로드 시 내 반 증감률 업데이트
-            } else if (getCookie('tutorial_completed') !== 'true') {
-                // 쿠키가 없으면 튜토리얼 시작
-                setTimeout(startTutorial, 500); // 페이지가 완전히 그려진 후 시작
-            }
-
-            // 증감률 표시기 초기화
-            updateSideIndicators();
         });
     </script>
 

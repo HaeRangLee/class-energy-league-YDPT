@@ -268,174 +268,192 @@
         <a href="home.html" class="back-link">랭킹으로 돌아가기</a>
     </div>
 
+    <!-- Firebase SDK (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-init.js"></script>
+
     <script src="common.js"></script> <!-- 공통 스크립트 파일 불러오기 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="data.js"></script> <!-- 데이터 파일 불러오기 -->
     <script src="_settings-panel.js"></script> <!-- 공통 패널 스크립트 -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 공통 패널 초기화 (이 페이지에서는 '내 반' 변경 시 특별한 동작이 필요 없음)
-            initializeSettingsPanel(realtimedata).then(() => {
-                let localData = realtimedata; // 로컬 데이터 사용
-                let dailyChart, weeklyChart, realtimeChart; // 차트 인스턴스
-                const checkboxContainer = document.getElementById('class-checkbox-container');
-                const resultsContainer = document.getElementById('comparison-results');
+            database.ref().on('value', (snapshot) => {
+                const realtimedata = snapshot.val();
+                if (!realtimedata) {
+                    console.error("Firebase에서 데이터를 불러오지 못했습니다.");
+                    document.body.innerHTML = "<h1>데이터를 불러오는 데 실패했습니다.</h1>";
+                    return;
+                }
 
-                // 색상 팔레트
-                const colorPalette = [
-                    'rgba(75, 192, 192, 0.5)', 'rgba(255, 159, 64, 0.5)', 'rgba(153, 102, 255, 0.5)',
-                    'rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)',
-                    'rgba(201, 203, 207, 0.5)'
-                ];
-                const borderPalette = [
-                    'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)', 'rgba(153, 102, 255, 1)',
-                    'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)',
-                    'rgba(201, 203, 207, 1)'
-                ];
+                // 공통 패널 초기화 (이 페이지에서는 '내 반' 변경 시 특별한 동작이 필요 없음)
+                initializeSettingsPanel(realtimedata).then(() => {
+                    let localData = realtimedata; // 로컬 데이터 사용
+                    let dailyChart, weeklyChart, realtimeChart; // 차트 인스턴스
+                    const checkboxContainer = document.getElementById('class-checkbox-container');
+                    const resultsContainer = document.getElementById('comparison-results');
 
-                // 비교 함수
-                function updateComparison() {
-                    // 함수 호출 시점에 체크박스 목록을 다시 가져옴
-                    const selectedClasses = Array.from(document.querySelectorAll('.class-checkbox'))
-                                                .filter(cb => cb.checked)
-                                                .map(cb => cb.value);
+                    // 색상 팔레트
+                    const colorPalette = [
+                        'rgba(75, 192, 192, 0.5)', 'rgba(255, 159, 64, 0.5)', 'rgba(153, 102, 255, 0.5)',
+                        'rgba(255, 99, 132, 0.5)', 'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)',
+                        'rgba(201, 203, 207, 0.5)'
+                    ];
+                    const borderPalette = [
+                        'rgba(75, 192, 192, 1)', 'rgba(255, 159, 64, 1)', 'rgba(153, 102, 255, 1)',
+                        'rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)', 'rgba(255, 206, 86, 1)',
+                        'rgba(201, 203, 207, 1)'
+                    ];
 
-                    if (!localData) return;
+                    // 비교 함수
+                    function updateComparison() {
+                        // 함수 호출 시점에 체크박스 목록을 다시 가져옴
+                        const selectedClasses = Array.from(document.querySelectorAll('.class-checkbox'))
+                                                    .filter(cb => cb.checked)
+                                                    .map(cb => cb.value);
 
-                    if (selectedClasses.length < 1) {
-                        resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
-                        if (dailyChart) dailyChart.destroy();
-                        if (weeklyChart) weeklyChart.destroy();
-                        if (realtimeChart) realtimeChart.destroy();
-                        document.querySelector('.charts-wrapper').style.display = 'none'; // 차트 영역 숨기기
-                        return;
-                    }
+                        if (!localData) return;
 
-                    // 차트 영역이 숨겨져 있었다면 다시 보이게 함
-                    document.querySelector('.charts-wrapper').style.display = 'flex';
-
-                    // 차트 생성/업데이트 함수
-                    const createOrUpdateChart = (chartInstance, canvasId, periodKey, labelKey, valueKey) => {
-                        if (chartInstance) chartInstance.destroy();
-                        
-                        const allData = [];
-                        let labels = []; // Labels will be dynamically generated from the first selected class
-
-                        const datasets = selectedClasses.map((classId, index) => {
-                            const classTrend = localData.detailPage[classId]?.trends[periodKey] || [];
-                            if (index === 0) { // Use the first selected class to determine labels
-                                labels = classTrend.map(d => d[labelKey]);
-                            }
-                            const dataValues = classTrend.map(d => d[valueKey]);
-                            allData.push(dataValues);
-                            return {
-                                type: 'line',
-                                label: `${localData.detailPage[classId].className} 에어컨 사용량`,
-                                data: dataValues,
-                                borderColor: borderPalette[index % borderPalette.length],
-                                backgroundColor: borderPalette[index % borderPalette.length],
-                                borderWidth: 2,
-                                fill: false,
-                                tension: 0.1,
-                                order: 0 // 꺾은선이 막대 위에 오도록 순서 지정
-                            };
-                        });
-
-                        // 평균 데이터셋 추가 (선택된 반이 2개 이상일 때)
-                        if (selectedClasses.length > 1) {
-                            const averageData = labels.map((_, i) => {
-                                const sum = allData.reduce((acc, data) => acc + (data[i] || 0), 0);
-                                const count = allData.filter(data => data[i] !== undefined).length;
-                                return count > 0 ? (sum / count).toFixed(2) : 0;
-                            });
-
-                            datasets.unshift({ // unshift를 사용해 배열 맨 앞에 추가 (배경으로 깔리도록)
-                                type: 'bar', // 평균은 막대 그래프로 표시
-                                label: '평균 에어컨 사용량',
-                                data: averageData,
-                                backgroundColor: 'rgba(201, 203, 207, 0.4)', // 연한 회색
-                                borderColor: 'rgba(201, 203, 207, 0.6)',
-                                borderWidth: 1,
-                                order: 1
-                            });
+                        if (selectedClasses.length < 1) {
+                            resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
+                            if (dailyChart) dailyChart.destroy();
+                            if (weeklyChart) weeklyChart.destroy();
+                            if (realtimeChart) realtimeChart.destroy();
+                            document.querySelector('.charts-wrapper').style.display = 'none'; // 차트 영역 숨기기
+                            return;
                         }
 
-                        return new Chart(document.getElementById(canvasId).getContext('2d'), {
-                            type: 'bar', // 기본 타입을 bar로 설정해야 복합 차트가 제대로 동작
-                            data: { labels, datasets },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: { y: { beginAtZero: false } },
-                                plugins: {
-                                    legend: {
-                                        onClick: Chart.defaults.plugins.legend.onClick // 범례 클릭 시 그래프 토글 기능 활성화
+                        // 차트 영역이 숨겨져 있었다면 다시 보이게 함
+                        document.querySelector('.charts-wrapper').style.display = 'flex';
+
+                        // 차트 생성/업데이트 함수
+                        const createOrUpdateChart = (chartInstance, canvasId, periodKey, labelKey, valueKey) => {
+                            if (chartInstance) chartInstance.destroy();
+                            
+                            const allData = [];
+                            let labels = []; // Labels will be dynamically generated from the first selected class
+
+                            const datasets = selectedClasses.map((classId, index) => {
+                                const classTrend = localData.detailPage[classId]?.trends[periodKey] || [];
+                                if (index === 0) { // Use the first selected class to determine labels
+                                    labels = classTrend.map(d => d[labelKey]);
+                                }
+                                const dataValues = classTrend.map(d => d[valueKey]);
+                                allData.push(dataValues);
+                                return {
+                                    type: 'line',
+                                    label: `${localData.detailPage[classId].className} 에어컨 사용량`,
+                                    data: dataValues,
+                                    borderColor: borderPalette[index % borderPalette.length],
+                                    backgroundColor: borderPalette[index % borderPalette.length],
+                                    borderWidth: 2,
+                                    fill: false,
+                                    tension: 0.1,
+                                    order: 0 // 꺾은선이 막대 위에 오도록 순서 지정
+                                };
+                            });
+
+                            // 평균 데이터셋 추가 (선택된 반이 2개 이상일 때)
+                            if (selectedClasses.length > 1) {
+                                const averageData = labels.map((_, i) => {
+                                    const sum = allData.reduce((acc, data) => acc + (data[i] || 0), 0);
+                                    const count = allData.filter(data => data[i] !== undefined).length;
+                                    return count > 0 ? (sum / count).toFixed(2) : 0;
+                                });
+
+                                datasets.unshift({ // unshift를 사용해 배열 맨 앞에 추가 (배경으로 깔리도록)
+                                    type: 'bar', // 평균은 막대 그래프로 표시
+                                    label: '평균 에어컨 사용량',
+                                    data: averageData,
+                                    backgroundColor: 'rgba(201, 203, 207, 0.4)', // 연한 회색
+                                    borderColor: 'rgba(201, 203, 207, 0.6)',
+                                    borderWidth: 1,
+                                    order: 1
+                                });
+                            }
+
+                            return new Chart(document.getElementById(canvasId).getContext('2d'), {
+                                type: 'bar', // 기본 타입을 bar로 설정해야 복합 차트가 제대로 동작
+                                data: { labels, datasets },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    scales: { y: { beginAtZero: false } },
+                                    plugins: {
+                                        legend: {
+                                            onClick: Chart.defaults.plugins.legend.onClick // 범례 클릭 시 그래프 토글 기능 활성화
+                                        }
                                     }
                                 }
-                            }
-                        });
-                    };
+                            });
+                        };
 
-                    // 3개의 차트를 각각 생성
-                    dailyChart = createOrUpdateChart(dailyChart, 'daily-chart', 'last7Days', 'date', 'value');
-                    weeklyChart = createOrUpdateChart(weeklyChart, 'weekly-chart', 'last4Weeks', 'week', 'value');
-                    realtimeChart = createOrUpdateChart(realtimeChart, 'realtime-chart', 'todayRealtime', 'time', 'value');
-                }
-
-                // --- 페이지 초기화 ---
-                // 체크박스 메뉴 채우기
-                const classList = [...localData.mainPage.monthlyRanking].sort((a, b) => a.className.localeCompare(b.className));
-                classList.forEach(team => {
-                    const checkboxId = `chk-${team.classId}`;
-                    checkboxContainer.innerHTML += `
-                        <div>
-                            <input type="checkbox" id="${checkboxId}" value="${team.classId}" class="class-checkbox">
-                            <label for="${checkboxId}">${team.className}</label>
-                        </div>
-                    `;
-                });
-
-                // 이벤트 리스너 연결
-                checkboxContainer.addEventListener('change', (e) => {
-                    if (e.target.classList.contains('class-checkbox')) {
-                        updateComparison();
-                    }
-                });
-
-                // 페이지 로드 시 기본 데이터 표시
-                // 1. 쿠키에서 '내 반' 정보 가져오기
-                const savedMyClassFromCookie = getCookie('myClass');
-                let defaultClassId = null;
-
-                if (savedMyClassFromCookie) {
-                    const myClassData = classList.find(c => c.className === savedMyClassFromCookie);
-                    if (myClassData) {
-                        defaultClassId = myClassData.classId;
-                    }
-                }
-
-                // 2. '내 반'이 없으면 1위 반을 기본값으로 설정
-                if (!defaultClassId) {
-                    const sortedRanking = [...localData.mainPage.monthlyRanking].sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
-                    if (sortedRanking.length > 0) {
-                        defaultClassId = sortedRanking[0].classId;
+                        // 3개의 차트를 각각 생성
+                        dailyChart = createOrUpdateChart(dailyChart, 'daily-chart', 'last7Days', 'date', 'value');
+                        weeklyChart = createOrUpdateChart(weeklyChart, 'weekly-chart', 'last4Weeks', 'week', 'value');
+                        realtimeChart = createOrUpdateChart(realtimeChart, 'realtime-chart', 'todayRealtime', 'time', 'value');
                     }
 
-                    // 기본 데이터가 없는 경우 초기 메시지 표시
+                    // --- 페이지 초기화 ---
+                    // 체크박스 메뉴 채우기
+                    const classList = [...localData.mainPage.monthlyRanking].sort((a, b) => a.className.localeCompare(b.className));
+                    checkboxContainer.innerHTML = ''; // 중복 생성을 막기 위해 컨테이너 비우기
+                    classList.forEach(team => {
+                        const checkboxId = `chk-${team.classId}`;
+                        checkboxContainer.innerHTML += `
+                            <div>
+                                <input type="checkbox" id="${checkboxId}" value="${team.classId}" class="class-checkbox">
+                                <label for="${checkboxId}">${team.className}</label>
+                            </div>
+                        `;
+                    });
+
+                    // 이벤트 리스너 연결
+                    checkboxContainer.addEventListener('change', (e) => {
+                        if (e.target.classList.contains('class-checkbox')) {
+                            updateComparison();
+                        }
+                    });
+
+                    // 페이지 로드 시 기본 데이터 표시
+                    // 1. 쿠키에서 '내 반' 정보 가져오기
+                    const savedMyClassFromCookie = getCookie('myClass');
+                    let defaultClassId = null;
+
+                    if (savedMyClassFromCookie) {
+                        const myClassData = classList.find(c => c.className === savedMyClassFromCookie);
+                        if (myClassData) {
+                            defaultClassId = myClassData.classId;
+                        }
+                    }
+
+                    // 2. '내 반'이 없으면 1위 반을 기본값으로 설정
                     if (!defaultClassId) {
-                        resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
+                        const sortedRanking = [...localData.mainPage.monthlyRanking].sort((a, b) => a.monthlyUsageIndex - b.monthlyUsageIndex);
+                        if (sortedRanking.length > 0) {
+                            defaultClassId = sortedRanking[0].classId;
+                        }
+
+                        // 기본 데이터가 없는 경우 초기 메시지 표시
+                        if (!defaultClassId) {
+                            resultsContainer.innerHTML = `<p style="text-align:center; grid-column: 1 / -1; color: var(--text-color);">비교할 반을 1개 이상 선택해주세요.</p>`;
+                        }
+
                     }
 
-                }
-
-                // 3. 기본으로 선택된 반의 체크박스를 활성화하고 차트 업데이트
-                if (defaultClassId) {
-                    const defaultCheckbox = document.getElementById(`chk-${defaultClassId}`);
-                    if (defaultCheckbox) {
-                        defaultCheckbox.checked = true;
-                        updateComparison(); // 차트와 정보 업데이트
+                    // 3. 기본으로 선택된 반의 체크박스를 활성화하고 차트 업데이트
+                    if (defaultClassId) {
+                        const defaultCheckbox = document.getElementById(`chk-${defaultClassId}`);
+                        if (defaultCheckbox) {
+                            defaultCheckbox.checked = true;
+                            updateComparison(); // 차트와 정보 업데이트
+                        }
                     }
-                }
+                });
+            }, (error) => {
+                console.error("Firebase 데이터 읽기 오류:", error);
+                document.body.innerHTML = "<h1>데이터를 불러오는 데 실패했습니다.</h1>";
             });
         });
     </script>
