@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import credentials
+from firebase_admin import credentials, firestore
 import os
 import logging # logging import 추가
 
@@ -24,6 +24,9 @@ def initialize_firebase_admin_sdk():
             # Firestore만 사용할 경우, databaseURL은 필요 없거나 생략 가능
             firebase_admin.initialize_app(cred)
             logging.info("Firebase Admin SDK가 성공적으로 초기화되었습니다.")
+            db = firestore.client() # db 객체 생성
+            return db # db 객체 반환    
+
         else:
             logging.info("Firebase Admin SDK는 이미 초기화되었습니다.")
         return True
@@ -31,14 +34,3 @@ def initialize_firebase_admin_sdk():
         logging.error(f"Firebase Admin SDK 초기화 중 오류 발생: {e}")
         print(f"Firebase Admin SDK 초기화 중 오류 발생: {e}")
         return False
-
-# main 함수 
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s"
-    )
-    if initialize_firebase_admin_sdk():
-        logging.info("\nFirebase Admin SDK 초기화 성공. 이제 관리자 권한으로 Firebase 서비스 사용 가능.")
-    else:
-        logging.error("\nFirebase Admin SDK 초기화 실패. Firebase 관련 작업 수행 불가.")
