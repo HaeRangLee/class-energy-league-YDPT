@@ -61,12 +61,11 @@ body[data-theme="dark"] {
     padding: 6px 10px;
     border: 1px solid var(--board-bg);
     border-radius: 6px;
-    transition: background-color 0.2s, color 0.2s, transform 0.2s ease;
+    transition: background-color 0.2s, color 0.2s;
 }
 .header-home-btn:hover {
     background-color: var(--board-bg);
     color: var(--title-color);
-    transform: translateY(-2px);
 }
 
 /* '더보기' 버튼 스타일 */

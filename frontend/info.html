@@ -482,6 +482,33 @@
                     const adviceCharacter = document.getElementById('advice-character');
                     const adviceMessageEl = document.getElementById('advice-message');
 
+                    // 동적 조언 부분을 생성하는 헬퍼 함수
+                    const getDynamicAdviceParts = (rank, score, prevScore, nextScore, comparison) => {
+                        let rankDiffAdvice = '';
+                        if (!isNaN(prevScore) && rank > 1) {
+                            rankDiffAdvice += ` ${rank - 1}위와는 ${score - prevScore}점 차이로 `;
+                        }
+                        if (!isNaN(nextScore) && rank < monthlyRanking.length) {
+                            rankDiffAdvice += ` ${rank + 1}위와는 ${nextScore - score}점 차이로 `;
+                        }
+
+                        let usageReductionAdvice = '';
+                        if (comparison.vsLastDay < 0) {
+                            usageReductionAdvice += ` 어제보다 ${Math.abs(comparison.vsLastDay).toFixed(1)}% 절약했어요!`;
+                        }
+                        if (comparison.vsLastWeek < 0) {
+                            usageReductionAdvice += ` 지난 주보다 ${Math.abs(comparison.vsLastWeek).toFixed(1)}% 절약했네요!`;
+                        }
+                        if (comparison.vsLastMonth < 0) {
+                            usageReductionAdvice += ` 지난 달보다 ${Math.abs(comparison.vsLastMonth).toFixed(1)}% 절약했어요!`;
+                        }
+                        if (usageReductionAdvice === '') {
+                            usageReductionAdvice = ' 에너지 절약에 더 신경 써봐요!';
+                        }
+
+                        return { rankDiffAdvice, usageReductionAdvice };
+                    };
+
                     if (comparison && adviceCharacter && adviceMessageEl) {
                         const classCharacterMapping = {
                             '1-1': 'A', '1-2': 'B', '1-3': 'C',
@@ -489,19 +516,44 @@
                         };
 
                         const weeklyChange = comparison.vsLastWeek;
+                        const goodAdvices = [
+                            (dynamic) => `좋아요! 지금처럼만 유지해주세요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 다음 목표를 향해 나아가요!`,
+                            (dynamic) => `훌륭해요! 에너지 절약 습관을 잘 지키고 있네요.${dynamic.usageReductionAdvice} 창문 닫고 에어컨 사용하기, 불필요한 전등 끄기 등 작은 실천이 중요해요.`,
+                            (dynamic) => `아주 잘하고 있어요! 이대로 쭉 노력해봐요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 더 높은 목표를 세워볼까요?`,
+                            (dynamic) => `에너지 절약 모범생! 덕분에 지구가 웃어요.${dynamic.usageReductionAdvice} 에어컨 필터 청소도 잊지 마세요!`,
+                            (dynamic) => `최고예요! 작은 실천이 큰 변화를 만들어요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 우리 반의 노력이 빛나고 있어요!`,
+                            (dynamic) => `체육시간에 에어컨 끄기도 잊지 마세요! 작은 습관이 큰 절약으로 이어져요.`
+                        ];
+                        const normalAdvices = [
+                            (dynamic) => `평범한 하루! 그래도 에어컨 끄는 건 잊지 마세요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 조금만 더 힘내면 더 좋은 결과를 만들 수 있을 거예요.`,
+                            (dynamic) => `꾸준함이 중요해요! 오늘도 에너지 절약에 신경 써봐요.${dynamic.usageReductionAdvice} 사용하지 않는 전자기기 플러그 뽑기도 좋은 습관이에요.`,
+                            (dynamic) => `조금만 더 관심을 가져볼까요? 작은 노력이 큰 차이를 만들어요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 다음 주에는 더 좋은 소식을 기대해봐요!`,
+                            (dynamic) => `오늘도 수고했어요! 내일은 더 절약해봐요.${dynamic.usageReductionAdvice} 에어컨 설정 온도를 1도 높이는 것도 도움이 돼요.`,
+                            (dynamic) => `에어컨 끄고, 플러그 뽑기! 잊지 마세요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 우리 모두 함께 노력하면 돼요.`
+                        ];
+                        const badAdvices = [
+                            (dynamic) => `조금만 더 분발해볼까요? 우리 함께 노력해요!${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 에어컨 설정 온도를 1도 높여보는 건 어떨까요?`,
+                            (dynamic) => `아쉬워요! 다음 주에는 더 좋은 결과를 기대해봐요.${dynamic.usageReductionAdvice} 점심시간에는 에어컨을 잠시 끄는 것도 좋은 방법이에요.`,
+                            (dynamic) => `에너지 낭비는 이제 그만! 다시 힘내서 절약해봐요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 불필요한 조명은 끄고 자연광을 활용해봐요.`,
+                            (dynamic) => `우리 반의 잠재력을 보여줄 때예요! 다시 시작해봐요.${dynamic.usageReductionAdvice} 에어컨 사용 시간을 줄이고 선풍기를 활용해봐요.`,
+                            (dynamic) => `포기하지 마세요! 작은 습관부터 바꿔나가면 돼요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 모두 함께 노력하면 분명 좋은 결과를 얻을 수 있을 거예요.`
+                        ];
+
                         let adviceMessage = '';
                         let characterEmotion = 'normal';
 
+                        const dynamicParts = getDynamicAdviceParts(rank, score, prevScore, nextScore, comparison);
+
                         if (weeklyChange < 0) {
-                            adviceMessage = "좋아요! 지금처럼만 유지해주세요.";
+                            adviceMessage = goodAdvices[Math.floor(Math.random() * goodAdvices.length)](dynamicParts);
                             characterEmotion = 'good';
                         } else if (weeklyChange === 0) {
-                            adviceMessage = "평범한 하루! 그래도 에어컨 끄는 건 잊지 마세요.";
-                            characterEmotion = 'normal';
-                        } else {
-                            adviceMessage = "조금만 더 분발해볼까요? 우리 함께 노력해요!";
-                            characterEmotion = 'bad';
-                        }
+                                adviceMessage = normalAdvices[Math.floor(Math.random() * normalAdvices.length)](dynamicParts);
+                                characterEmotion = 'normal';
+                            } else {
+                                adviceMessage = badAdvices[Math.floor(Math.random() * badAdvices.length)](dynamicParts);
+                                characterEmotion = 'bad';
+                            }
 
                         const characterId = classCharacterMapping[classId];
                         if (characterId) {
