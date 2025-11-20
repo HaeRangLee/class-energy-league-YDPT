@@ -492,17 +492,22 @@
                             rankDiffAdvice += ` ${rank + 1}위와는 ${nextScore - score}점 차이로 `;
                         }
 
-                        let usageReductionAdvice = '';
+                        const reductionParts = [];
                         if (comparison.vsLastDay < 0) {
-                            usageReductionAdvice += ` 어제보다 ${Math.abs(comparison.vsLastDay).toFixed(1)}% 절약했어요!`;
+                            reductionParts.push(`어제보다 ${Math.abs(comparison.vsLastDay).toFixed(1)}%`);
                         }
                         if (comparison.vsLastWeek < 0) {
-                            usageReductionAdvice += ` 지난 주보다 ${Math.abs(comparison.vsLastWeek).toFixed(1)}% 절약했네요!`;
+                            reductionParts.push(`지난주보다 ${Math.abs(comparison.vsLastWeek).toFixed(1)}%`);
                         }
                         if (comparison.vsLastMonth < 0) {
-                            usageReductionAdvice += ` 지난 달보다 ${Math.abs(comparison.vsLastMonth).toFixed(1)}% 절약했어요!`;
+                            reductionParts.push(`지난 달보다 ${Math.abs(comparison.vsLastMonth).toFixed(1)}%`);
                         }
-                        if (usageReductionAdvice === '') {
+
+                        let usageReductionAdvice;
+                        if (reductionParts.length > 0) {
+                            // 예: "어제보다 12.0%, 지난 주보다 12.1% 절약했네요!"
+                            usageReductionAdvice = ` ${reductionParts.join(', ')} 절약했네요!`;
+                        } else {
                             usageReductionAdvice = ' 에너지 절약에 더 신경 써봐요!';
                         }
 
@@ -519,7 +524,7 @@
                         const goodAdvices = [
                             (dynamic) => `좋아요! 지금처럼만 유지해주세요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 다음 목표를 향해 나아가요!`,
                             (dynamic) => `훌륭해요! 에너지 절약 습관을 잘 지키고 있네요.${dynamic.usageReductionAdvice} 창문 닫고 에어컨 사용하기, 불필요한 전등 끄기 등 작은 실천이 중요해요.`,
-                            (dynamic) => `아주 잘하고 있어요! 이대로 쭉 노력해봐요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 더 높은 목표를 세워볼까요?`,
+                            (dynamic) => `아주 잘하고 있어요! 이대로 쭉 노력해봐요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 더 높은 목표를 세워볼까요?`, // 기존 문구 유지
                             (dynamic) => `에너지 절약 모범생! 덕분에 지구가 웃어요.${dynamic.usageReductionAdvice} 에어컨 필터 청소도 잊지 마세요!`,
                             (dynamic) => `최고예요! 작은 실천이 큰 변화를 만들어요.${dynamic.usageReductionAdvice} ${dynamic.rankDiffAdvice} 우리 반의 노력이 빛나고 있어요!`,
                             (dynamic) => `체육시간에 에어컨 끄기도 잊지 마세요! 작은 습관이 큰 절약으로 이어져요.`
